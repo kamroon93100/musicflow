@@ -83,3 +83,5 @@ vendor/
 coverage/
 .cache/
 tmp/
+
+.env.local
