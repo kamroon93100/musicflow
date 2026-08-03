@@ -6,7 +6,7 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 ## 📊 Progress Tracker
 
 ### Phase 1: Foundation ⏳
-- [ ] 1.1 Providers setup (TanStack Query, Zustand, Theme, PWA)
+- [x] 1.1 Providers setup (TanStack Query, Zustand, Theme, PWA)
 - [ ] 1.2 Supabase client + Drizzle ORM schema
 - [ ] 1.3 Auth system (signup, login, session)
 - [ ] 1.4 Base layout with sidebar + player bar placeholder
@@ -77,4 +77,5 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [ ] (Piped API is public - no key needed)
 
 ## 📌 Current Status
-Setup complete. Ready to begin Phase 1 Slice 1.1.
+Slice 1.1 complete (providers, theme, UI store, PWA manifest, design tokens).
+Ready to begin Phase 1 Slice 1.2 (Supabase client + Drizzle ORM schema).

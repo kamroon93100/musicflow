@@ -15,7 +15,7 @@ Every component you build targets 120fps rendering performance.
 - **Performance**: 120fps UI, <500ms play start, <100ms API responses
 
 ## 🏗️ TECH STACK (LOCKED)
-- **Framework**: Next.js 15 (App Router, TypeScript strict)
+- **Framework**: Next.js 16 (App Router, TypeScript strict) — v16.2.x, see breaking changes below
 - **Styling**: Tailwind CSS + shadcn/ui (dark theme)
 - **Animation**: Framer Motion (GPU-only transforms)
 - **State**: Zustand (player, queue, UI)
@@ -30,6 +30,17 @@ Every component you build targets 120fps rendering performance.
 - **Validation**: Zod
 - **Forms**: React Hook Form
 - **Deploy**: Vercel (Edge Runtime where possible)
+
+## 🧨 NEXT.JS 16 BREAKING CHANGES (READ FIRST)
+This project runs Next.js 16.2.x — NOT 15. Per AGENTS.md, before writing any
+Next.js code, read the bundled docs in `node_modules/next/dist/docs/`.
+- **PWA manifests**: use a `src/app/manifest.ts` route handler (export default
+  returning `MetadataRoute.Manifest`). `metadata.manifest` in layout is not the
+  current convention.
+- **Viewport**: `themeColor` and other viewport options live in a separate
+  `export const viewport: Viewport` from layout/page files — NOT in `metadata`.
+- Assume other APIs may differ from pre-16 training data; verify against the
+  bundled docs rather than memory.
 
 ## ⚡ PERFORMANCE RULES (NON-NEGOTIABLE)
 1. Audio playback starts within 500ms of pressing play
