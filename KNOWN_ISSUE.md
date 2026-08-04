@@ -57,3 +57,18 @@
   anon key can only act within RLS bounds (own rows only).
 - **TODO**: Enable "Confirm email" before production launch (Slice 6.5); the
   /auth/callback route already handles confirmation redirects.
+
+## [1.4] middleware.ts convention deprecated in Next.js 16
+- **Status**: Warning only, still functional
+- **Warning**: "The 'middleware' file convention is deprecated. Please use
+  'proxy' instead."
+- **Fix later**: Rename src/middleware.ts → src/proxy.ts in Phase 6 polish
+- **Reason for deferral**: Not blocking, working correctly; the deprecation
+  removal is a future breaking change.
+
+## [1.4] DropdownMenuLabel requires DropdownMenuGroup context
+- **Status**: Fixed - replaced with plain styled div showing user email
+- **Reason**: shadcn v4 (@base-ui/react) MenuGroupLabel needs a Menu.Group
+  parent, otherwise throws "MenuGroupContext missing"
+- **Fix applied**: Used plain <div> instead + wired useUser() hook for email
+  display
