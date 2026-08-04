@@ -47,6 +47,18 @@ export interface StreamSource {
   format?: string;
 }
 
+/**
+ * Display metadata for OS-level media controls (Media Session API). Passed to
+ * MediaSessionController.setMetadata() separately from StreamSource — a stream
+ * URL and its display metadata are different concerns.
+ */
+export interface TrackMetadata {
+  title: string;
+  artist: string | null;
+  album?: string | null;
+  artwork?: { src: string; sizes?: string; type?: string }[];
+}
+
 /** Immutable snapshot returned by AudioEngine.getState(). */
 export interface AudioEngineState {
   state: AudioState;

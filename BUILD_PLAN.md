@@ -15,7 +15,7 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [x] 2.1 Howler.js wrapper (play, pause, seek, volume)
 - [x] 2.2 Piped API integration for stream URLs
 - [x] 2.3 Gapless playback with next song preloader
-- [ ] 2.4 Media Session API for OS controls
+- [x] 2.4 Media Session API for OS controls
 - [ ] 2.5 Player Zustand store + usePlayer hook
 
 ### Phase 3: API Layer 🔒
@@ -87,4 +87,10 @@ Slice 2.3 complete: gapless playback with next-song preloader — engine owns
 mechanics (queue-agnostic), caller owns timing; auto-promote on end; chained
 next-next preload; verified 65ms gap (Spotify-quality) in the temp
 /test-gapless page (deleted after verification). See KNOWN_ISSUE.md [2.3].
-Next: **Slice 2.4 — Media Session API for OS-level controls.**
+Slice 2.4 complete: Media Session API — MediaSessionController mirrors engine
+state to the OS Now Playing widget (play/pause/seekto real, prev/next inert
+until 2.5); verified in Windows Chrome (widget shows metadata + controls,
+widget play/pause works, Stop clears it). Engine unchanged (no browser-API
+coupling). See KNOWN_ISSUE.md [2.4].
+Next: **Slice 2.5 — Player Zustand store + usePlayer hook** (final Phase 2
+slice; wires queue, metadata, and preload timing together).

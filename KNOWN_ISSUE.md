@@ -121,3 +121,26 @@
   type strings. Multi-word events use kebab-case (preload-ready,
   preload-error). Both TypeScript keys and emit()/on() calls now
   consistent throughout.
+
+## [2.4] Media Session - OS widget confirmed working on Windows Chrome
+- **Status**: Working - Windows Action Center shows Now Playing widget
+- **Verified**: Widget appears with track title, artist, and controls
+- **Widget controls work**: Play/Pause buttons in OS widget function
+- **App icon appears**: MusicFlow green icon shows in widget
+
+## [2.4] Media Session - Direct media keys depend on laptop hardware
+- **Status**: Widget controls work; direct F7 media keys hardware-dependent
+- **Reason**: Some laptops route media keys to specific apps or need Fn key
+- **Not a code issue**: Media Session API doesn't control how OS routes keys
+- **Workaround**: Users can use widget controls, Bluetooth headphones,
+  or configure their laptop keyboard driver
+- **No fix needed**: Standard behavior across all web music apps
+
+## [2.4] Media Session - Windows Chrome may ignore SVG artwork
+- Placeholder /icon.svg used - green icon does appear in widget
+- Fix in Slice 4.x: Real album art from Piped/Spotify metadata
+
+## [2.4] Media Session - Prev/Next handlers inert until Slice 2.5
+- Buttons appear in OS widget (⏮ ⏭)
+- Click them: logs to console but no action (correct - needs queue)
+- Fix in Slice 2.5: Wire to player store next/previous actions
