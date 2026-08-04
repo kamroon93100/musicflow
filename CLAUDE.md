@@ -31,6 +31,17 @@ Every component you build targets 120fps rendering performance.
 - **Forms**: React Hook Form
 - **Deploy**: Vercel (Edge Runtime where possible)
 
+## 🗄️ DATABASE CONVENTIONS
+- **UUIDs**: v4 via gen_random_uuid() DB default
+  (v7 requires PostgreSQL 18+, Supabase runs 15-17)
+- **Timestamps**: timestamptz NOT NULL DEFAULT now()
+- **Track IDs**: text (Piped/YouTube video ID format, not UUID)
+- **Track metadata**: jsonb snapshot for zero-JOIN rendering
+- **Indexes**: on all FKs + query columns for Phase 3 API perf
+- **FKs to auth.users**: added in Slice 1.3 after real Supabase verified
+- **Migrations**: applied via Supabase SQL editor (drizzle-kit blocked
+  by npm 11.12.1 bug on Windows — see KNOWN_ISSUE.md)
+
 ## 🧨 NEXT.JS 16 BREAKING CHANGES (READ FIRST)
 This project runs Next.js 16.2.x — NOT 15. Per AGENTS.md, before writing any
 Next.js code, read the bundled docs in `node_modules/next/dist/docs/`.

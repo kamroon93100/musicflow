@@ -85,3 +85,6 @@ coverage/
 tmp/
 
 .env.local
+
+# Drizzle migrations (regenerated per environment)
+src/lib/db/migrations/

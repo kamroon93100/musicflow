@@ -16,3 +16,34 @@
   only an SVG icon exists.
 - **Resolution**: Generate 192/512 PNG icons in Slice 5.6 (Offline PWA), where
   installability actually lands.
+
+## [1.2] UUID v7 not feasible on Supabase
+- **Status**: Corrected to v4 in schema
+- **Reason**: gen_random_uuid() v7 requires PostgreSQL 18+, Supabase runs
+  PG 15-17. pg_uuidv7 extension is not in the Supabase catalog.
+- **Impact**: Marginal — index locality gains are negligible at our target
+  scale (100k users).
+
+## [1.2] drizzle-kit won't install via npm 11.12.1
+- **Status**: Workaround adopted — use Supabase SQL editor for migrations
+- **Reason**: npm 11.12.1 has a bug that silently drops certain
+  devDependencies (@types/node, drizzle-kit, undici-types). The root
+  lockfile is correct but npm's resolver excludes them from the installed
+  tree.
+- **Attempted fixes** (all failed):
+  1. Clear hidden lockfile + reinstall
+  2. Full npm cache clean --force
+  3. Manual --save-dev install
+  4. Nuclear reset (delete node_modules + package-lock)
+- **Workaround**:
+  - @types/node: manually installed via tarball extraction
+  - drizzle-kit: SKIP — use Supabase SQL editor UI for migrations
+  - Runtime unaffected (drizzle-orm + postgres both work fine)
+- **Fix later**: Try npm upgrade or downgrade in Phase 6 polish.
+  Alternatively, migrate to pnpm which doesn't have this bug.
+
+## [1.2] Missing Supabase API keys
+- **Status**: Slice 1.3 blocker
+- **Required**: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL
+- **Source**: https://supabase.com → Create project → Settings → API
