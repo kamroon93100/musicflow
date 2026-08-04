@@ -72,3 +72,16 @@
   parent, otherwise throws "MenuGroupContext missing"
 - **Fix applied**: Used plain <div> instead + wired useUser() hook for email
   display
+
+## [2.1] Web Audio API deferred to Slice 5.3 (visualizer)
+- **Status**: Deferred intentionally
+- **Reason**: Using HTML5 audio for streaming (simpler, sufficient for MVP)
+- **Impact**: Web Audio API will be added when Slice 5.3 visualizer needs
+  AnalyserNode; no per-track EQ/effects in Phase 2 (not needed for MVP)
+
+## [2.1] Emil Kowalski skills referenced but not installed as files
+- **Status**: Rules applied inline from prompt content (worked correctly)
+- **Reason**: Skills referenced by name in prompts don't exist in
+  .claude/skills/ — only impeccable is installed there
+- **Fix later**: Reinstall in Phase 6 polish:
+  `npx skills@latest add emilkowalski/skills -a claude-code`

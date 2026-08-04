@@ -8,11 +8,11 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 ### Phase 1: Foundation ⏳
 - [x] 1.1 Providers setup (TanStack Query, Zustand, Theme, PWA)
 - [x] 1.2 Supabase client + Drizzle ORM schema
-- [ ] 1.3 Auth system (signup, login, session)
-- [ ] 1.4 Base layout with sidebar + player bar placeholder
+- [x] 1.3 Auth system (signup, login, session)
+- [x] 1.4 Base layout with sidebar + player bar placeholder
 
 ### Phase 2: Audio Engine 🔒
-- [ ] 2.1 Howler.js wrapper (play, pause, seek, volume)
+- [x] 2.1 Howler.js wrapper (play, pause, seek, volume)
 - [ ] 2.2 Piped API integration for stream URLs
 - [ ] 2.3 Gapless playback with next song preloader
 - [ ] 2.4 Media Session API for OS controls
@@ -77,6 +77,8 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [ ] (Piped API is public - no key needed)
 
 ## 📌 Current Status
-Slices 1.1-1.3 files complete (providers, Supabase clients + Drizzle schema,
-auth system: middleware, Server Actions, auth pages, useUser hook).
-Slice 1.3 pending: SQL migration run in Supabase editor + live auth test.
+Slices 1.1-1.4 complete (providers, Supabase clients + Drizzle schema, auth
+system, base layout with sidebar + player bar). Slice 2.1 complete: Howler.js
+audio engine (state machine, typed emitter, HTML5 streaming, rAF progress,
+retry-once, volume fade) — verified end-to-end with SoundHelix.
+Next: **Slice 2.2 — Piped API integration for real YouTube Music stream URLs.**
