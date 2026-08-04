@@ -108,3 +108,16 @@
   - 2.4 media session tests with any playing audio
   - 2.5 player store works regardless of URL source
 - **Fix in Phase 6 polish**: Add yt-dlp fallback OR self-host Piped
+
+## [2.3] Gapless playback: verified 65ms gap (well under 100ms target)
+- **Status**: Working perfectly - Spotify-quality
+- **Measured**: 65ms gap in /test-gapless verification
+- **Implementation**: HTML5 audio (streaming), NOT Web Audio API
+- **Trade-off**: ~50-100ms gap vs sample-perfect (0ms) with Web Audio
+- **User-perceptible impact**: None - anything under 100ms feels instant
+- **Alternative**: Web Audio API for sample-perfect (requires full buffer
+  download, not streaming) - deferred to Slice 5.3 visualizer
+- **Also fixed during Slice 2.3**: AudioEventMap keys must match emitted
+  type strings. Multi-word events use kebab-case (preload-ready,
+  preload-error). Both TypeScript keys and emit()/on() calls now
+  consistent throughout.

@@ -26,6 +26,10 @@ export interface AudioEventMap {
     position: number;
     duration: number;
   }) => void;
+  /** Background next-song buffer finished loading (gapless ready). */
+  "preload-ready": (event: { type: "preload-ready" }) => void;
+  /** Background next-song buffer failed to load. */
+  "preload-error": (event: { type: "preload-error"; error: Error }) => void;
 }
 
 /** One emitted audio event, discriminated by `type`. */

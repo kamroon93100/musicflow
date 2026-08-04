@@ -29,6 +29,11 @@ export class AudioEngine {
   private state: AudioState = AudioState.IDLE;
   private volume = 1;
   private streamUrl: string | null = null;
+  private currentSource: StreamSource | null = null;
+  private preloadedHowl: Howl | null = null;
+  private preloadedSource: StreamSource | null = null;
+  private preloadReady = false;
+  private preloadInFlight = false;
   private retried = false;
   private rafId: number | null = null;
 
@@ -38,6 +43,8 @@ export class AudioEngine {
     end: new Set(),
     error: new Set(),
     progress: new Set(),
+    "preload-ready": new Set(),
+    "preload-error": new Set(),
   };
 
   /* ---- Event emitter (typed, dependency-free) ---- */
@@ -85,9 +92,11 @@ export class AudioEngine {
       return;
     }
 
+    this.cancelPreload(); // a new play() is a skip — old "next" is invalid
     this.teardownHowl();
 
     this.streamUrl = source.url;
+    this.currentSource = source;
     this.retried = false;
     this.state = AudioState.LOADING;
 
@@ -112,6 +121,7 @@ export class AudioEngine {
 
   /** Full stop — releases the stream and returns to IDLE. */
   stop(): void {
+    this.cancelPreload();
     this.teardownHowl();
     this.stopProgressLoop();
     this.state = AudioState.IDLE;
@@ -158,14 +168,49 @@ export class AudioEngine {
     };
   }
 
+  /** The currently playing (or loaded) source, if any. */
+  getCurrentStream(): StreamSource | null {
+    return this.currentSource;
+  }
+
+  /** The preloaded next source, if any. */
+  getPreloadedStream(): StreamSource | null {
+    return this.preloadedSource;
+  }
+
+  /**
+   * Start buffering the NEXT source in the background without playing it.
+   * The caller decides WHEN to call this (e.g. 80% through the current song)
+   * — the engine stays queue-agnostic. The buffered howl is promoted to
+   * current automatically when the current one ends (gapless). A no-op if the
+   * source is already current or already preloaded. Cancelled by play(),
+   * stop(), destroy(), or a preload failure.
+   */
+  preload(source: StreamSource): void {
+    if (!source.url) return;
+    if (source.url === this.streamUrl || source.url === this.preloadedSource?.url) {
+      return; // same as current, or already buffered — skip (no duplicate buffer)
+    }
+
+    this.cancelPreload();
+
+    this.preloadedSource = source;
+    this.preloadReady = false;
+    this.preloadInFlight = true;
+    this.preloadedHowl = this.buildHowl(source);
+    this.preloadedHowl.load(); // html5 + preload:false → buffers head without playing
+  }
+
   /** Full teardown for HMR/unmount — cancels rAF, unloads, clears listeners. */
   destroy(): void {
     this.stopProgressLoop();
+    this.cancelPreload();
     this.teardownHowl();
     for (const key of Object.keys(this.listeners) as (keyof AudioEventMap)[]) {
       this.listeners[key].clear();
     }
     this.streamUrl = null;
+    this.currentSource = null;
     this.state = AudioState.IDLE;
     this.retried = false;
   }
@@ -186,16 +231,38 @@ export class AudioEngine {
         this.state = AudioState.PAUSED;
         this.emit("pause", { type: "pause" });
       },
-      onend: () => {
-        this.state = AudioState.ENDED;
-        this.stopProgressLoop();
-        this.emit("end", { type: "end" });
+      onload: () => {
+        if (this.preloadInFlight) {
+          // Background buffer finished → gapless "next" is ready.
+          this.preloadInFlight = false;
+          this.preloadReady = true;
+          this.emit("preload-ready", { type: "preload-ready" });
+        }
       },
-      onloaderror: (_id, err) => this.handleLoadFailure(err),
-      onplayerror: (_id, err) => this.handleLoadFailure(err),
+      onend: () => this.handleCurrentEnd(),
+      onloaderror: (_id, err) => this.handleLoadError(err),
+      onplayerror: (_id, err) => this.handleLoadError(err),
     };
     if (format) options.format = format;
     return new Howl(options);
+  }
+
+  /**
+   * Error router: background preloads emit `preload-error` and are dropped
+   * (playback continues on the current song); the current howl retries once
+   * then surfaces ERROR.
+   */
+  private handleLoadError(err: unknown): void {
+    if (this.preloadInFlight && this.preloadedHowl) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.cancelPreload();
+      this.emit("preload-error", {
+        type: "preload-error",
+        error: new Error(message),
+      });
+      return;
+    }
+    this.handleLoadFailure(err);
   }
 
   /**
@@ -217,6 +284,58 @@ export class AudioEngine {
     this.stopProgressLoop();
     this.teardownHowl();
     this.emit("error", { type: "error", error: new Error(message) });
+  }
+
+  /** Current song finished — promote the buffered next (gapless) or end. */
+  private handleCurrentEnd(): void {
+    if (this.preloadedHowl && this.preloadReady) {
+      this.promoteToCurrent();
+      return;
+    }
+    // No ready "next" → normal end.
+    this.state = AudioState.ENDED;
+    this.stopProgressLoop();
+    this.emit("end", { type: "end" });
+  }
+
+  /**
+   * Swap the finished current howl for the preloaded one and keep playing.
+   * `next` is already buffered, so play() starts with zero network stall.
+   * Emits "end" so the caller knows the queue advanced.
+   */
+  private promoteToCurrent(): void {
+    const next = this.preloadedHowl!;
+    const source = this.preloadedSource!;
+
+    this.teardownHowl(); // unload the finished current howl
+
+    // Clear preload bookkeeping WITHOUT unloading `next` — it becomes current.
+    this.preloadedHowl = null;
+    this.preloadedSource = null;
+    this.preloadReady = false;
+    this.preloadInFlight = false;
+
+    this.howl = next;
+    this.currentSource = source;
+    this.streamUrl = source.url;
+    this.state = AudioState.PLAYING;
+    this.soundId = next.play();
+    this.startProgressLoop();
+    this.emit("end", { type: "end" });
+  }
+
+  /** Drop any in-flight/ready preload. Safe no-op when nothing is buffered. */
+  private cancelPreload(): void {
+    if (!this.preloadedHowl && !this.preloadInFlight) return;
+    this.unloadPreloaded();
+  }
+
+  private unloadPreloaded(): void {
+    this.preloadedHowl?.unload();
+    this.preloadedHowl = null;
+    this.preloadedSource = null;
+    this.preloadReady = false;
+    this.preloadInFlight = false;
   }
 
   private teardownHowl(): void {
