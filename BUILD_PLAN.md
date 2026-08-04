@@ -16,7 +16,7 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [x] 2.2 Piped API integration for stream URLs
 - [x] 2.3 Gapless playback with next song preloader
 - [x] 2.4 Media Session API for OS controls
-- [ ] 2.5 Player Zustand store + usePlayer hook
+- [x] 2.5 Player Zustand store + usePlayer hook
 
 ### Phase 3: API Layer 🔒
 - [ ] 3.1 /api/search route (Piped proxy + Redis cache)
@@ -92,5 +92,33 @@ state to the OS Now Playing widget (play/pause/seekto real, prev/next inert
 until 2.5); verified in Windows Chrome (widget shows metadata + controls,
 widget play/pause works, Stop clears it). Engine unchanged (no browser-API
 coupling). See KNOWN_ISSUE.md [2.4].
-Next: **Slice 2.5 — Player Zustand store + usePlayer hook** (final Phase 2
-slice; wires queue, metadata, and preload timing together).
+Slice 2.5 complete: Player Zustand store + usePlayer hook — single source of
+truth for playback, queue, history, and modes. Glue layer connecting the
+AudioEngine, Piped stream API, gapless preloader, and Media Session. PlayerState
+with 14 actions (playTrack/playQueue/pause/resume/stop/next/previous/seek/
+setVolume/toggleShuffle/cycleRepeat/queue actions). Stream-resolver seam for
+testability. Engine event wiring (play/pause/end/error/progress) drives store
+state. Gapless: engine auto-promotes, store correlates via internal
+preloadedTrack; preload triggered at 80% or −20s; eager chain keeps gapless.
+Repeat off/one/all (one replay, all chronological wrap). Next/Previous manage
+history (most-recent-first). Media Session metadata synced on every track
+change; OS prev/next WIRED to store actions via usePlayerStore.getState()
+(imperative pattern, benign circular import). usePlayer() + 13 granular
+selector hooks for 120fps; usePlayerActions() with useShallow for stable action
+refs. Verified end-to-end (12-step walkthrough + extras): auto-advance, history,
+queue management, repeat/shuffle, volume, OS widget + prev/next, Stop clears
+state while retaining history.
+
+# 🎉 PHASE 2: AUDIO ENGINE — 100% COMPLETE 🎉
+
+### ✅ Summary
+- **2.1** Howler.js wrapper (state machine, events, volume, seek)
+- **2.2** Piped API integration (real YouTube Music search + streams)
+- **2.3** Gapless playback (65ms verified, Spotify-quality)
+- **2.4** Media Session API (OS Now Playing widget + media keys)
+- **2.5** Player Zustand store (glue layer, all actions, prev/next wired)
+
+The complete audio pipeline — request → stream → decode → play → advance →
+preload-next — is done and verified end-to-end. Next slice starts **Phase 3:
+API Layer** (Redis caching, real API routes, metadata, lyrics, playlists,
+rate limiting).

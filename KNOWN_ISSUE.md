@@ -140,7 +140,10 @@
 - Placeholder /icon.svg used - green icon does appear in widget
 - Fix in Slice 4.x: Real album art from Piped/Spotify metadata
 
-## [2.4] Media Session - Prev/Next handlers inert until Slice 2.5
-- Buttons appear in OS widget (⏮ ⏭)
-- Click them: logs to console but no action (correct - needs queue)
-- Fix in Slice 2.5: Wire to player store next/previous actions
+## [2.5] Media Session - OS prev/next wired to player store
+- Status: prev/next buttons in the OS Now Playing widget now advance the queue
+- Wiring: MediaSessionController handlers call
+  usePlayerStore.getState().next() / .previous() (Zustand imperative pattern
+  for non-React consumers)
+- Note: circular import player-store <-> media-session is benign — the store is
+  only touched inside handlers (runtime), never at module scope

@@ -11,6 +11,9 @@
  */
 import { AudioState, type TrackMetadata } from "@/types/audio";
 import type { AudioEngine } from "@/lib/audio/engine";
+// Circular with player-store, but benign: the store is only touched inside the
+// action handlers below (runtime), never at module scope.
+import { usePlayerStore } from "@/stores/player-store";
 
 type PlaybackState = "playing" | "paused" | "none";
 
@@ -120,12 +123,12 @@ export class MediaSessionController {
         this.engine.pause();
       }
     });
-    // Registered so the buttons appear; real skip needs a queue (Slice 2.5).
+    // OS prev/next → advance the player queue (Slice 2.5).
     ms.setActionHandler("previoustrack", () => {
-      console.debug("[media-session] previoustrack — queue lands in Slice 2.5");
+      void usePlayerStore.getState().previous();
     });
     ms.setActionHandler("nexttrack", () => {
-      console.debug("[media-session] nexttrack — queue lands in Slice 2.5");
+      void usePlayerStore.getState().next();
     });
     if (typeof ms.setPositionState === "function") {
       ms.setActionHandler("seekto", (details) => {
