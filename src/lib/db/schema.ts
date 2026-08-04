@@ -21,14 +21,17 @@ import { relations } from "drizzle-orm";
  *   no tracks table. Display data is snapshotted into track_metadata (jsonb)
  *   so list/feed rendering needs zero JOINs (120fps rule).
  * - users.id mirrors auth.users.id and is inserted by the auth handler — no
- *   default, and the hard FK → auth.users is deferred to Slice 1.3.
+ *   default; the FK → auth.users(id) ON DELETE CASCADE is applied in the
+ *   Supabase SQL migration (Slice 1.3), not modeled in Drizzle.
  */
 
 /** Extends Supabase Auth users; id mirrors auth.users.id. */
 export const users = pgTable("users", {
   id: uuid("id").primaryKey(),
-  // TODO(1.3): add FK → auth.users(id) once a real Supabase connection is
-  // verified and the cross-schema reference generates cleanly.
+  // FK → auth.users(id) ON DELETE CASCADE applied in the Supabase SQL
+  // migration (Slice 1.3). Cross-schema (public.users → auth.users) and
+  // drizzle-kit can't push it anyway, so Drizzle keeps the plain PK and the
+  // SQL owns the constraint.
   email: text("email").notNull().unique(),
   displayName: text("display_name"),
   avatarUrl: text("avatar_url"),

@@ -77,5 +77,6 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [ ] (Piped API is public - no key needed)
 
 ## 📌 Current Status
-Slices 1.1 + 1.2 complete (providers, Supabase clients, Drizzle schema, env
-validation). Ready to begin Slice 1.3 (Auth system) once Supabase keys are added.
+Slices 1.1-1.3 files complete (providers, Supabase clients + Drizzle schema,
+auth system: middleware, Server Actions, auth pages, useUser hook).
+Slice 1.3 pending: SQL migration run in Supabase editor + live auth test.

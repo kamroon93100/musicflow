@@ -47,3 +47,13 @@
 - **Required**: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL
 - **Source**: https://supabase.com → Create project → Settings → API
+
+## [1.3] Email confirmation disabled for dev
+- **Status**: Intentional for now
+- **Setting**: Supabase → Authentication → Providers → Email → "Confirm
+  email" is OFF. signUp() returns a live session → instant login, and the
+  users-row sync mirrors immediately.
+- **Impact**: Anyone can self-register from /signup. Acceptable for dev; the
+  anon key can only act within RLS bounds (own rows only).
+- **TODO**: Enable "Confirm email" before production launch (Slice 6.5); the
+  /auth/callback route already handles confirmation redirects.

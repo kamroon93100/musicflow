@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/howler": "^2.2.13",
     "@types/node": "^20.19.43",
     "@types/react": "^19",
