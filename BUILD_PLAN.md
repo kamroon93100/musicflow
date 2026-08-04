@@ -19,12 +19,12 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [x] 2.5 Player Zustand store + usePlayer hook
 
 ### Phase 3: API Layer 🔒
-- [ ] 3.1 /api/search route (Piped proxy + Redis cache)
-- [ ] 3.2 /api/stream/[id] route (get audio URL)
-- [ ] 3.3 /api/metadata/[id] route (Spotify enrichment)
-- [ ] 3.4 /api/lyrics/[id] route (LRCLIB synced lyrics)
-- [ ] 3.5 /api/recommendations route
-- [ ] 3.6 /api/playlists CRUD routes
+- [x] 3.1 Redis caching setup (Upstash)
+- [ ] 3.2 Search API cache layer
+- [ ] 3.3 Stream URL caching
+- [ ] 3.4 Spotify metadata enrichment
+- [ ] 3.5 LRCLIB lyrics integration
+- [ ] 3.6 Playlists CRUD (uses Supabase)
 - [ ] 3.7 Rate limiting middleware
 
 ### Phase 4: Core UI 🔒
@@ -119,6 +119,16 @@ state while retaining history.
 - **2.5** Player Zustand store (glue layer, all actions, prev/next wired)
 
 The complete audio pipeline — request → stream → decode → play → advance →
-preload-next — is done and verified end-to-end. Next slice starts **Phase 3:
-API Layer** (Redis caching, real API routes, metadata, lyrics, playlists,
-rate limiting).
+preload-next — is done and verified end-to-end.
+
+Slice 3.1 complete: Redis caching infrastructure (Upstash) — getRedis()
+singleton with lazy init + graceful no-op fallback; cacheGet/cacheSet/cacheKey
+helpers with JSON serialization; TTL consts match CLAUDE.md (search 5m,
+metadata 24h, lyrics 30d); `muuzic:<kind>:<key>` namespace with normalized
+keys; lazy optional Redis env (Supabase never depends on it). Verified live
+against Upstash Tokyo (asia-northeast1): set/get/ttl/del round-trip, warm
+latency ~757ms (4 sequential ops), cold-start ~1300ms. Fixed Upstash REST
+auto-deserialize edge case (cacheGet now accepts string OR object). See
+KNOWN_ISSUE.md [3.1].
+Next: **Slice 3.2 — Search API cache layer** (wire /api/search through Redis,
+replacing the in-memory searchCache map).

@@ -147,3 +147,28 @@
   for non-React consumers)
 - Note: circular import player-store <-> media-session is benign — the store is
   only touched inside handlers (runtime), never at module scope
+
+## [3.1] Redis cache infrastructure verified live
+- Status: Working end-to-end with Upstash Tokyo instance
+- Latency from India: ~750ms warm, ~1300ms cold-start (4 sequential ops)
+- Real-world usage (single GET/SET): expected ~50-150ms per operation
+- Free tier: 10k commands/day sufficient for MVP
+- Best-effort design: graceful no-op if Redis unavailable
+
+## [3.1] Upstash REST auto-deserializes JSON on GET
+- Issue discovered: client.get returns already-parsed object, not string
+- Symptom: JSON.parse on live object threw error, cacheGet returned null
+- Fix: cacheGet now handles both string and object responses
+- Prevention: Test cache reads against real Upstash behavior early
+
+## [3.1] App Router private folder gotcha
+- Issue: _dev folder prefix makes route non-routable
+- Symptom: 404 on /api/_dev/cache-check
+- Fix: Renamed to /api/cache-check (no _ prefix)
+- Lesson: Never use _ prefix for routes meant to be public
+
+## [3.1] Next.js Windows write-race on .next/dev/types
+- Issue: Torn TS files (TS1005, TS1128 errors)
+- Cause: Dev server writing while tsc reading
+- Fix: rm -rf .next then restart dev server
+- Prevention: Don't run tsc during dev server compilation

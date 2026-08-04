@@ -50,3 +50,28 @@ export function getServerEnv() {
   }
   return cachedServerEnv;
 }
+
+/* ---- Optional Redis env (Slice 3.1) ------------------------------------------
+ * UPSTASH_REDIS_REST_URL/TOKEN are OPTIONAL. When either is missing the cache
+ * degrades to a no-op (see src/lib/cache/redis.ts), so the app runs fine before
+ * keys exist. Deliberately separate from getServerEnv() — Supabase auth must
+ * never depend on Redis being configured.
+ */
+const redisEnvSchema = z.object({
+  url: z.url(),
+  token: z.string().min(1),
+});
+
+let cachedRedisEnv: { url: string; token: string } | null | undefined;
+
+/** Lazy, optional Redis connection config. Returns null when not configured. */
+export function getRedisEnv(): { url: string; token: string } | null {
+  if (cachedRedisEnv === undefined) {
+    const parsed = redisEnvSchema.safeParse({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+    cachedRedisEnv = parsed.success ? parsed.data : null;
+  }
+  return cachedRedisEnv;
+}
