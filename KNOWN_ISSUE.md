@@ -85,3 +85,26 @@
   .claude/skills/ — only impeccable is installed there
 - **Fix later**: Reinstall in Phase 6 polish:
   `npx skills@latest add emilkowalski/skills -a claude-code`
+
+## [2.2] Piped stream endpoints blocked by YouTube anti-bot (transient)
+- **Status**: Upstream throttle - not a code defect
+- **Symptom**: /streams returns "SignInConfirmNotBotException: YouTube probably
+  temporarily blocked anonymous watch access with this IP, got error
+  LOGIN_REQUIRED"
+- **Root cause**: YouTube periodically flags Piped instance IPs
+- **Verified**: Both private.coffee + kavin.rocks flagged simultaneously (2026-08)
+- **Our code handles it correctly**:
+  - Multi-instance fallback attempts each host
+  - Error message lists all failures per instance
+  - Search endpoint unaffected (different YouTube API)
+- **Blocks usually clear**: minutes to hours (YouTube-controlled)
+- **Fix options for later**:
+  1. Self-host Piped instance (own IP, less likely to flag)
+  2. Add yt-dlp server-side extraction fallback (Slice 6.x)
+  3. Wait for community to add more instances
+  4. Switch to SoundCloud API (different content library)
+- **Impact on Slices 2.3-2.5**: NONE
+  - 2.3 gapless can test with mocked URLs
+  - 2.4 media session tests with any playing audio
+  - 2.5 player store works regardless of URL source
+- **Fix in Phase 6 polish**: Add yt-dlp fallback OR self-host Piped

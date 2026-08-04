@@ -74,6 +74,17 @@ export class AudioEngine {
 
   /** Load and start a stream. Replaces whatever was playing. */
   play(source: StreamSource): void {
+    if (!source.url) {
+      // Defensive: never feed an empty/invalid URL to howler (it would spin
+      // into a confusing loaderror retry loop). Fail fast into ERROR.
+      this.state = AudioState.ERROR;
+      this.emit("error", {
+        type: "error",
+        error: new Error("Cannot play: stream URL is missing"),
+      });
+      return;
+    }
+
     this.teardownHowl();
 
     this.streamUrl = source.url;
