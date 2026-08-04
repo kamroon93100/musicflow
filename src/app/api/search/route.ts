@@ -19,8 +19,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const tracks = await searchSongs(parsed.data.q);
-    return Response.json({ success: true, data: tracks });
+    const { tracks, fromCache } = await searchSongs(parsed.data.q);
+    return Response.json(
+      { success: true, data: tracks },
+      { headers: { "X-Cache": fromCache ? "HIT" : "MISS" } },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Search failed";
     return Response.json({ success: false, error: message }, { status: 502 });

@@ -172,3 +172,17 @@
 - Cause: Dev server writing while tsc reading
 - Fix: rm -rf .next then restart dev server
 - Prevention: Don't run tsc during dev server compilation
+
+## [3.2] Search cache Redis wiring verified live
+- Status: Working - MISS on first query, HIT on repeat
+- Speed: 8x improvement on cache hit (863 -> 6942 bytes/sec throughput)
+- TTL: 5 minutes (SEARCH_TTL_SECONDS from Slice 3.1)
+- Cache key: muuzic:search:<normalized-query>
+- Empty results cached too (prevents Piped hammering on typos)
+- Header: X-Cache: HIT | MISS on 200 responses only
+- Body shape unchanged: { success: true, data: Track[] }
+
+## [3.2] Case-variant queries share cache entry
+- "Shape of You" and "shape of you" hit the same key
+- Normalization via cacheKey helper (trim + lowercase + single-space)
+- Impact: Positive - fewer redundant Piped calls

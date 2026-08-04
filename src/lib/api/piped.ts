@@ -4,9 +4,9 @@
  *
  * Multi-instance with fallback: requests are tried against each instance in
  * order until one responds, so a single dead host (e.g. a 502) never breaks
- * search or streaming. Redis caching lands in Slice 3.1; for now search is
- * cached in-memory for 5 minutes per the CLAUDE.md cache rule. Stream URLs are
- * NOT cached (they expire / are region-locked).
+ * search or streaming. Search results are Redis-cached 5 minutes (Slice 3.1
+ * helpers, CLAUDE.md cache rule) via a best-effort write — see searchSongs.
+ * Stream URLs are NOT cached (they expire / are region-locked).
  *
  * Instance list is kept deliberately SHORT: each dead host costs a full 10s
  * timeout on the failure path before falling through, so stacking unverified
@@ -15,6 +15,12 @@
  * private.coffee is registered and up; kavin.rocks is the canonical repo host
  * (fast-fails with 502 when down, so it's free to keep as a fallback).
  */
+import {
+  SEARCH_TTL_SECONDS,
+  cacheGet,
+  cacheKey,
+  cacheSet,
+} from "@/lib/cache/redis";
 import type {
   PipedAudioStream,
   PipedSearchItem,
@@ -30,7 +36,6 @@ const PIPED_INSTANCES = [
 ] as const;
 
 const REQUEST_TIMEOUT_MS = 10_000;
-const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 const WATCH_URL_RE = /\/watch\?v=([A-Za-z0-9_-]{11})/;
 const YT_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
@@ -41,9 +46,6 @@ const FORMAT_TO_HOWLER: Record<string, string> = {
   OGG: "ogg",
   MP3: "mp3",
 };
-
-/** In-memory search cache, keyed by normalized query. Replaced by Redis in 3.1. */
-const searchCache = new Map<string, { at: number; data: Track[] }>();
 
 function extractVideoId(item: PipedSearchItem): string | null {
   if (item.videoId && YT_ID_RE.test(item.videoId)) return item.videoId;
@@ -139,10 +141,19 @@ async function fetchPiped(path: string): Promise<unknown> {
   throw new Error(`All Piped instances failed: ${failures.join(" | ")}`);
 }
 
-/** Search YouTube Music for songs, normalized to `Track[]` (cached 5 min). */
-export async function searchSongs(query: string): Promise<Track[]> {
-  const cached = searchCache.get(query);
-  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return cached.data;
+/**
+ * Search YouTube Music for songs, normalized to `Track[]`. Redis-cached 5 min
+ * (CLAUDE.md cache rule); cache provenance returned so callers can emit an
+ * X-Cache header. Best-effort: a Redis miss/error degrades to a live fetch.
+ */
+export async function searchSongs(query: string): Promise<{
+  tracks: Track[];
+  fromCache: boolean;
+}> {
+  const key = cacheKey("search", query);
+  const cached = await cacheGet<Track[]>(key);
+  // `[]` is truthy, so a cached empty result counts as a hit too.
+  if (cached) return { tracks: cached, fromCache: true };
 
   const path = `/search?q=${encodeURIComponent(query)}&filter=music_songs&region=US`;
   const raw = (await fetchPiped(path)) as { items?: PipedSearchItem[] };
@@ -151,8 +162,8 @@ export async function searchSongs(query: string): Promise<Track[]> {
     .map(normalizeSearchItem)
     .filter((t): t is Track => t !== null);
 
-  searchCache.set(query, { at: Date.now(), data: tracks });
-  return tracks;
+  await cacheSet(key, tracks, SEARCH_TTL_SECONDS);
+  return { tracks, fromCache: false };
 }
 
 /** Fetch + validate the `/streams/:id` payload once, shared by both methods. */

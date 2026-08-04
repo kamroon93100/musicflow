@@ -20,7 +20,7 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 
 ### Phase 3: API Layer 🔒
 - [x] 3.1 Redis caching setup (Upstash)
-- [ ] 3.2 Search API cache layer
+- [x] 3.2 Search API cache layer
 - [ ] 3.3 Stream URL caching
 - [ ] 3.4 Spotify metadata enrichment
 - [ ] 3.5 LRCLIB lyrics integration
@@ -130,5 +130,13 @@ against Upstash Tokyo (asia-northeast1): set/get/ttl/del round-trip, warm
 latency ~757ms (4 sequential ops), cold-start ~1300ms. Fixed Upstash REST
 auto-deserialize edge case (cacheGet now accepts string OR object). See
 KNOWN_ISSUE.md [3.1].
-Next: **Slice 3.2 — Search API cache layer** (wire /api/search through Redis,
-replacing the in-memory searchCache map).
+Slice 3.2 complete: Search API Redis cache — searchSongs owns the cache,
+returning `{ tracks, fromCache }` (cache provenance for X-Cache headers). The
+in-memory searchCache Map was replaced with the Slice 3.1 helpers
+(cacheKey/cacheGet/cacheSet, 5-min TTL). /api/search returns `X-Cache:
+HIT | MISS` on 200. Empty results cached 5 min (prevents Piped hammering on
+typos). Best-effort writes + graceful no-op without UPSTASH keys. Verified
+live: MISS on first query, HIT on repeat, ~8x faster on hit, 20 real results,
+body shape unchanged. See KNOWN_ISSUE.md [3.2].
+Next: **Slice 3.3 — Stream URL caching** (decide whether/when to cache Piped
+stream URLs; currently uncached by design — URLs are region-locked).
