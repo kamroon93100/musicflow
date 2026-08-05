@@ -166,6 +166,35 @@ Drizzle camelCase → snake_case via a CamelToSnake transform (see
 KNOWN_ISSUE.md [3.6]). Verified live: all 12 CRUD steps passed (create,
 list, append×2, read, reorder, verify, rename, remove, verify, delete,
 cascade count=0). Deleted the temp /test-playlists page after passing.
-Next: **Phase 4 — Core UI** (4.1 sidebar navigation + library section).
 Remaining Phase 3 slices 3.3 (stream cache), 3.4 (Spotify metadata), 3.7
 (rate limiting) deliberately deferred — low value vs effort for MVP.
+> Phase 4 numbering note: the user runs Phase 4 in their own item order, which
+> deviates from the checkbox list at the top of this file. Search page landed
+> first (recorded as Slice 4.1 below); the full NowPlayingBar wire-up is 4.3;
+> sidebar/library library sections, Home sections, and the track-list page come
+> after. The checkbox tracker above is treated as a reference list, not a
+> strict sequence.
+Slice 4.1 complete: real search page + optimistic NowPlayingBar wire-up.
+Search: debounced 300ms input, TanStack Query (queryKey ["search", q],
+10-min staleTime riding the server-side Redis 5-min cache), loading skeleton
+(8 rows) / empty / error-with-retry / idle states. SearchResultItem memoized —
+the row IS a button (48px touch target, 8px radius, m:ss duration, null-artist
+"Unknown artist" fallback); the currently-playing row is highlighted via
+useCurrentTrack() → 1px #1DB954 ring. Motion (emil/animation-vocabulary):
+hover 150ms ease-out (row → bg-elevated + a play chip fades in over the
+thumb), click whileTap scale(0.98) 100ms. Thumbnails are plain <img> 48px /
+8px radius — Piped/YT hosts aren't in next.config remotePatterns, so next/image
+was rejected (assumption A1). NowPlayingBar partially wired (full = 4.3):
+publishes currentTrack optimistically BEFORE the stream fetch (Spotify
+behavior) so the bar shows the title the instant a result is clicked; a spinner
+overlays the thumb while the stream URL resolves; on failure the bar keeps the
+track info and shows red "Stream unavailable"; play/pause is functional. Player
+store hardening: startTrack sets currentTrack first (FIX A); new streamError
+store field + useStreamError() granular selector; defaultResolveStream is now
+bounded (MAX_STREAM_ATTEMPTS = 2, fail-fast on 502/429/403) — the previous
+path could emit 8+ fetches per click on the Piped block (FIX B/C; the route's
+internal 2-instance fallback is legitimate, not a retry). Verified end-to-end:
+search returns real YouTube Music results with thumbnails; clicking a result
+shows the track in the bar immediately; the still-active Piped stream block
+shows a graceful error with no retry storm. See KNOWN_ISSUE.md [4.1].
+Next: the user's 4.3 — full NowPlayingBar wire-up (seek + volume).

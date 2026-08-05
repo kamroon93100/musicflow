@@ -30,6 +30,9 @@ export interface PlayerState {
   isPlaying: boolean;
   isPaused: boolean;
   isLoading: boolean;
+  /** Non-null when the last startTrack failed to fetch a stream (kept set so
+   *  the bar can show the track info + an error instead of going blank). */
+  streamError: string | null;
   position: number;
   duration: number;
   volume: number;
@@ -66,17 +69,36 @@ export interface PlayerState {
  * injects a SoundHelix resolver via setStreamResolver(). Production never
  * calls the override.
  */
+/** Max total attempts per stream fetch (1 initial + 1 retry). */
+const MAX_STREAM_ATTEMPTS = 2;
+
 async function defaultResolveStream(track: Track): Promise<StreamSource> {
-  const res = await fetch(`/api/stream/${encodeURIComponent(track.id)}`);
-  const json = (await res.json()) as {
-    success?: boolean;
-    data?: StreamInfo;
-    error?: string;
-  };
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.error ?? `Failed to load stream for "${track.title}"`);
+  let lastError: Error = new Error(`Failed to load stream for "${track.title}"`);
+  for (let attempt = 1; attempt <= MAX_STREAM_ATTEMPTS; attempt++) {
+    let status = 0;
+    try {
+      const res = await fetch(`/api/stream/${encodeURIComponent(track.id)}`);
+      status = res.status;
+      const json = (await res.json()) as {
+        success?: boolean;
+        data?: StreamInfo;
+        error?: string;
+      };
+      if (res.ok && json.success && json.data) {
+        return { url: json.data.url, format: json.data.format ?? undefined };
+      }
+      lastError = new Error(
+        json.error ?? `Failed to load stream for "${track.title}"`,
+      );
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+    // 502/429/403 = Piped/YouTube anti-bot block or rate limit (KNOWN_ISSUE
+    // [2.2]) — the block won't clear mid-retry, so fail fast. Only a transient
+    // non-throttle failure earns the single retry.
+    if (status === 502 || status === 429 || status === 403) break;
   }
-  return { url: json.data.url, format: json.data.format ?? undefined };
+  throw lastError;
 }
 
 let resolveStream: (track: Track) => Promise<StreamSource> = defaultResolveStream;
@@ -105,6 +127,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   isPlaying: false,
   isPaused: false,
   isLoading: false,
+  streamError: null,
   position: 0,
   duration: 0,
   volume: 1,
@@ -153,10 +176,15 @@ function toMetadata(track: Track): TrackMetadata {
 async function startTrack(track: Track): Promise<void> {
   preloadedTrack = null;
   preloadInFlight = false;
+  // Optimistic track info (Spotify behavior): publish the track BEFORE the
+  // stream fetch so the bar shows it instantly. If the stream then fails, the
+  // track stays visible with a streamError instead of the bar going blank.
   usePlayerStore.setState({
+    currentTrack: track,
     isLoading: true,
     isPlaying: false,
     isPaused: false,
+    streamError: null,
     position: 0,
     duration: 0,
   });
@@ -165,15 +193,12 @@ async function startTrack(track: Track): Promise<void> {
     if (!source.url) throw new Error(`Empty stream URL for "${track.title}"`);
     audioEngine.play({ url: source.url, format: source.format });
     mediaSession.setMetadata(toMetadata(track));
-    usePlayerStore.setState({ currentTrack: track, isLoading: false });
+    usePlayerStore.setState({ isLoading: false, streamError: null });
   } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Stream unavailable";
     console.warn("[player] failed to start track:", err);
-    usePlayerStore.setState({
-      currentTrack: null,
-      isLoading: false,
-      isPlaying: false,
-      isPaused: false,
-    });
+    usePlayerStore.setState({ isLoading: false, streamError: message });
   }
 }
 
@@ -246,6 +271,7 @@ function stopPlayback(): void {
     isPlaying: false,
     isPaused: false,
     isLoading: false,
+    streamError: null,
     position: 0,
     duration: 0,
     queue: [],
@@ -327,7 +353,12 @@ function shuffleArray<T>(arr: T[]): T[] {
 
 /* ---- Engine event wiring (module init, client-only) ------------------------------ */
 audioEngine.on("play", () => {
-  usePlayerStore.setState({ isPlaying: true, isPaused: false, isLoading: false });
+  usePlayerStore.setState({
+    isPlaying: true,
+    isPaused: false,
+    isLoading: false,
+    streamError: null,
+  });
 });
 audioEngine.on("pause", () => {
   usePlayerStore.setState({ isPlaying: false, isPaused: true });

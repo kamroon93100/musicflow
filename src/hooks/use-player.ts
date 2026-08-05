@@ -21,6 +21,7 @@ export const useCurrentTrack = () => usePlayerStore((s) => s.currentTrack);
 export const useIsPlaying = () => usePlayerStore((s) => s.isPlaying);
 export const useIsPaused = () => usePlayerStore((s) => s.isPaused);
 export const useIsLoading = () => usePlayerStore((s) => s.isLoading);
+export const useStreamError = () => usePlayerStore((s) => s.streamError);
 export const usePosition = () => usePlayerStore((s) => s.position);
 export const useDuration = () => usePlayerStore((s) => s.duration);
 export const useVolume = () => usePlayerStore((s) => s.volume);

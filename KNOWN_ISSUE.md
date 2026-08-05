@@ -216,3 +216,27 @@
 - Type safety preserved via ToSnake mapped type
 - Auth actions unaffected (single-word keys like id/email)
 - Timestamps: Drizzle types them Date, REST returns ISO strings (toIso helper)
+
+## [4.1] Search page verified with real YouTube Music results
+- Status: Working end-to-end
+- Search: debounced 300ms, TanStack Query, Redis cached (server-side 5min)
+- Results: real thumbnails, titles, artists, durations (m:ss)
+- Active track highlighted with green ring (useCurrentTrack selector)
+- Verified live: typing "shape of you" returns real Piped results
+
+## [4.1] NowPlayingBar optimistic track info (Spotify behavior)
+- Status: Track info shows IMMEDIATELY before stream fetch (startTrack sets
+  currentTrack first, then awaits resolveStream)
+- On stream success: audio plays, loading spinner clears
+- On stream failure: track info stays, red "Stream unavailable" subtitle
+- Prevents a blank bar on the Piped stream block (KNOWN_ISSUE [2.2])
+- Play button disabled on failure; tooltip says tap the song again to retry
+
+## [4.1] Stream fetch bounded retry (was effectively unbounded on failure)
+- Previous: 8+ repeated 502 fetches observed per click on the Piped block
+- Now: MAX_STREAM_ATTEMPTS = 2 (1 initial + 1 retry), fail-fast on 502/429/403
+- Piped anti-bot blocks won't clear mid-retry, so retrying wastes calls
+- Only a transient network/5xx failure earns the single retry
+- Reduces server load and user-facing latency on failure
+- Note: the route's internal 2-Piped-instance fallback (fetchPiped) is
+  legitimate failover, not a retry; it is unchanged

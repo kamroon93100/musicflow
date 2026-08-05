@@ -2,18 +2,43 @@
 
 import { memo } from "react";
 import { motion } from "framer-motion";
-import { Music, Play, Volume2 } from "lucide-react";
+import { Loader2, Music, Pause, Play, Volume2 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
+import {
+  useCurrentTrack,
+  useIsLoading,
+  useIsPaused,
+  useIsPlaying,
+  usePlayerActions,
+  useStreamError,
+} from "@/hooks/use-player";
 
 /**
- * Fixed bottom player bar (90px). Placeholder only — every control is
- * disabled; real playback lands in Slice 2.5 (Howler + Zustand player store).
- * Memoized so it never re-renders as other UI changes (120fps rule #4).
+ * Fixed bottom player bar (90px). Partial wire-up (Slice 4.1): shows the
+ * current track and a working Play/Pause; seek + volume are still disabled
+ * until Slice 4.3. Granular selectors only (120fps rule #4) so position/volume
+ * updates never re-render unrelated UI.
  *
  * Mobile: floats above the bottom nav (bottom-14) so the tab bar sits at the
  * very bottom. Desktop: flush at the viewport bottom.
  */
 function NowPlayingBarBase() {
+  const currentTrack = useCurrentTrack();
+  const isPlaying = useIsPlaying();
+  const isPaused = useIsPaused();
+  const isLoading = useIsLoading();
+  const streamError = useStreamError();
+  const { resume, pause } = usePlayerActions();
+
+  const hasTrack = currentTrack !== null;
+  const hasError = streamError !== null;
+  const togglePlay = () => {
+    if (!hasTrack || hasError) return;
+    if (isPlaying) pause();
+    else resume();
+  };
+
   return (
     <motion.div
       initial={{ y: 96 }}
@@ -24,15 +49,46 @@ function NowPlayingBarBase() {
       <div className="grid h-full grid-cols-[1fr_2fr_1fr] items-center gap-4 px-4 md:px-6">
         {/* Left (25%): now-playing info */}
         <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-12 shrink-0 place-items-center rounded-[8px] bg-surface text-muted-foreground">
-            <Music className="size-5" />
-          </div>
+          {hasTrack && currentTrack.thumbnail ? (
+            <span className="relative grid size-12 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={currentTrack.thumbnail}
+                alt=""
+                width={48}
+                height={48}
+                loading="lazy"
+                className="size-12 rounded-[8px] object-cover"
+              />
+              {isLoading && (
+                <span className="absolute inset-0 grid place-items-center rounded-[8px] bg-black/50">
+                  <Loader2
+                    className="size-4 animate-spin text-foreground"
+                    aria-hidden
+                  />
+                </span>
+              )}
+            </span>
+          ) : (
+            <div className="grid size-12 shrink-0 place-items-center rounded-[8px] bg-surface text-muted-foreground">
+              <Music className="size-5" />
+            </div>
+          )}
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-foreground">
-              Not playing
+              {hasTrack ? currentTrack.title : "Not playing"}
             </p>
-            <p className="truncate text-xs text-muted-foreground">
-              Pick a song to start
+            <p
+              className={cn(
+                "truncate text-xs",
+                hasError ? "text-destructive" : "text-muted-foreground",
+              )}
+            >
+              {hasTrack
+                ? hasError
+                  ? "Stream unavailable"
+                  : currentTrack.artist ?? "Unknown artist"
+                : "Pick a song to start"}
             </p>
           </div>
         </div>
@@ -41,13 +97,26 @@ function NowPlayingBarBase() {
         <div className="flex flex-col items-center justify-center gap-2">
           <button
             type="button"
-            disabled
-            aria-label="Play"
-            aria-disabled="true"
-            title="Available in Slice 2.5"
-            className="grid size-9 place-items-center rounded-full bg-foreground text-background disabled:opacity-40"
+            onClick={togglePlay}
+            disabled={!hasTrack || hasError}
+            aria-label={isPlaying ? "Pause" : "Play"}
+            aria-disabled={!hasTrack || hasError}
+            title={
+              hasError
+                ? "Stream unavailable. Tap the song again to retry."
+                : hasTrack
+                  ? isPlaying
+                    ? "Pause"
+                    : "Play"
+                  : "Pick a song first"
+            }
+            className="grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background transition-colors duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Play className="ml-0.5 size-5" />
+            {isPlaying && !isPaused ? (
+              <Pause className="size-5" />
+            ) : (
+              <Play className="ml-0.5 size-5" />
+            )}
           </button>
           <div className="flex w-full max-w-md items-center gap-2">
             <span className="text-[11px] tabular-nums text-muted-foreground">
