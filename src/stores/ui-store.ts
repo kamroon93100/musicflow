@@ -9,10 +9,17 @@ import { create } from "zustand";
 interface UIState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  /** Full-screen player overlay open state (Slice 4.4) */
+  isFullScreenPlayerOpen: boolean;
+  openFullScreenPlayer: () => void;
+  closeFullScreenPlayer: () => void;
 }
 
 export const useUIStore = create<UIState>()((set) => ({
   sidebarCollapsed: false,
   toggleSidebar: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  isFullScreenPlayerOpen: false,
+  openFullScreenPlayer: () => set({ isFullScreenPlayerOpen: true }),
+  closeFullScreenPlayer: () => set({ isFullScreenPlayerOpen: false }),
 }));

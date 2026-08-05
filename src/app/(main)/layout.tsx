@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/top-bar";
 import MobileNav from "@/components/layout/mobile-nav";
 import NowPlayingBar from "@/components/player/now-playing-bar";
+import { useUIStore } from "@/stores/ui-store";
 
 /**
  * Main app shell: fixed sidebar + content column (top bar + scrollable main)
@@ -11,6 +14,24 @@ import NowPlayingBar from "@/components/player/now-playing-bar";
  * Bottom padding reserves the player bar (90px) and, on mobile, the bottom nav
  * (56px) that sits below it.
  */
+
+// Full-screen player is lazy-loaded (Slice 4.4): its chunk is requested only
+// the first time it opens, then stays mounted so AnimatePresence exits play.
+const FullScreenPlayer = dynamic(
+  () => import("@/components/player/full-screen-player"),
+  { ssr: false },
+);
+
+function FullScreenPlayerHost() {
+  const isOpen = useUIStore((s) => s.isFullScreenPlayerOpen);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    if (isOpen) setMounted(true);
+  }, [isOpen]);
+  if (!mounted) return null;
+  return <FullScreenPlayer />;
+}
+
 export default function MainLayout({
   children,
 }: {
@@ -29,6 +50,7 @@ export default function MainLayout({
 
       <NowPlayingBar />
       <MobileNav />
+      <FullScreenPlayerHost />
     </div>
   );
 }

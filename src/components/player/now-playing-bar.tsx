@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { cn, formatDuration } from "@/lib/utils";
+import { useUIStore } from "@/stores/ui-store";
 import {
   useCurrentTrack,
   useDuration,
@@ -65,14 +66,25 @@ function TrackInfoBase() {
   const currentTrack = useCurrentTrack();
   const isLoading = useIsLoading();
   const streamError = useStreamError();
+  const openFullScreen = useUIStore((s) => s.openFullScreenPlayer);
 
   const hasTrack = currentTrack !== null;
   const hasError = streamError !== null;
 
   return (
-    <div className="flex min-w-0 items-center gap-3">
+    <button
+      type="button"
+      onClick={openFullScreen}
+      disabled={!hasTrack}
+      aria-label={hasTrack ? "Open full screen player" : undefined}
+      title={hasTrack ? "Open full screen player" : "Pick a song to start"}
+      className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-[8px] p-2 -m-2 text-left outline-none transition-colors duration-150 disabled:cursor-default focus-visible:ring-3 focus-visible:ring-ring/50 hover:bg-elevated/40"
+    >
       {hasTrack && currentTrack.thumbnail ? (
-        <span className="relative grid size-12 shrink-0">
+        <motion.span
+          layoutId={`nowplaying-art-${currentTrack.id}`}
+          className="relative grid size-12 shrink-0"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={currentTrack.thumbnail}
@@ -87,11 +99,14 @@ function TrackInfoBase() {
               <Loader2 className="size-4 animate-spin text-foreground" aria-hidden />
             </span>
           )}
-        </span>
+        </motion.span>
       ) : (
-        <div className="grid size-12 shrink-0 place-items-center rounded-[8px] bg-surface text-muted-foreground">
+        <motion.div
+          layoutId={hasTrack ? `nowplaying-art-${currentTrack.id}` : undefined}
+          className="grid size-12 shrink-0 place-items-center rounded-[8px] bg-surface text-muted-foreground"
+        >
           <Music className="size-5" />
-        </div>
+        </motion.div>
       )}
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-foreground">
@@ -110,7 +125,7 @@ function TrackInfoBase() {
             : "Pick a song to start"}
         </p>
       </div>
-    </div>
+    </button>
   );
 }
 

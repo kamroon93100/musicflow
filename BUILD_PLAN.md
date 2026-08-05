@@ -31,7 +31,7 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [ ] 4.1 Sidebar navigation + library section
 - [ ] 4.2 Top bar with search
 - [ ] 4.3 NowPlayingBar (bottom fixed player)
-- [ ] 4.4 Full-screen player (expandable, spring physics)
+- [x] 4.4 Full-screen player (expandable, spring physics)
 - [ ] 4.5 Virtualized track list component
 - [ ] 4.6 Home page with sections
 - [ ] 4.7 Search page with results
@@ -220,5 +220,31 @@ normalized with Array.isArray in both handlers (see KNOWN_ISSUE.md [4.3]).
 Verified end-to-end: seek ticks live, drag-to-jump works, volume + mute toggle
 work, prev/next disabled for a lone track, play/pause and the stream-error state
 are preserved. See KNOWN_ISSUE.md [4.3].
+Slice 4.4 complete: full-screen player + synced lyrics + spatial expand. Opens
+from the NowPlayingBar track-info trigger (A4); overlay mounts in (main)/layout
+via next/dynamic ssr:false + a mounted-latch host so the chunk loads on first
+open only (A10). AnimatePresence enter = spring (stiffness 300, damping 30)
+rising out of the bar; exit = ease-in 200ms sliding back down (A5). Spatial
+continuity: the artwork shares a Framer layoutId with the bar thumbnail, so it
+morphs out of the bar on open and back into it on close (A2; degrades to a
+plain crossfade when a track has no thumbnail). Layout (A6): mobile full-bleed
+takeover with a draggable top grab handle (Apple Music swipe-down-to-close;
+dragSnapToOrigin, closes past 120px offset / 500px/s velocity); desktop centered
+600px modal (max-h 92vh, rounded-2xl, dimmed backdrop, click closes). Artwork:
+size-[min(300px,60vw)] mobile / size-400 desktop, 8px radius, semi-transparent
+shadow. Transport: 56px play/pause, 44px shuffle/prev/next/repeat with green
+active states (repeat off→all→one via Repeat/Repeat1 icons); full-width seek +
+m:ss labels, volume mute + slider, disabled queue placeholder ("Queue coming in
+Slice 5.2"). Perf: panel middle (art/title/lyrics) never subscribes to position;
+only PlayerControls and the lyrics wrapper do, and the lyric line list is memo'd
+so the 60fps tick re-renders just the wrapper (A7). Lyrics: TanStack Query
+["lyrics", id] with 30d stale/gcTime mirroring the server Redis 30d cache
+(Slice 3.5); client LRC parser; active line highlighted #1DB954 and auto-centered
+via scrollIntoView on active-index change; fallbacks: instrumental / plain-text /
+"No lyrics available" + skeleton / "Try again" states. State:
+isFullScreenPlayerOpen + open/close in ui-store (A3). Verified end-to-end: opens
+from bar with spring + art morph, all controls functional, closes cleanly via X /
+backdrop / swipe, search page and bar state preserved across open/close. See
+KNOWN_ISSUE.md [4.4].
 Next: the user's next Phase 4 slice (sidebar/library sections, Home sections, or
 the track-list page) per their roadmap.

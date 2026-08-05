@@ -261,3 +261,12 @@
 - Fixed: both seek and volume handlers normalize via Array.isArray(v) ? v[0] : v
 - Lesson: shadcn v4 sits on @base-ui/react, not Radix — verify slider event
   names against base-ui before assuming Radix semantics
+
+## [4.4] Full-screen player verified
+- Status: Opens from bar, all controls visible, closes cleanly
+- Layout: Desktop centered modal with backdrop
+- Album art: Large display with Ed Sheeran cover loaded
+- Transport: Shuffle/prev/play(56px)/next/repeat all present
+- Seek + volume controls present
+- Close: X button works, page state preserved
+- Lyrics: Section available (loads from LRCLIB on demand)
