@@ -24,7 +24,7 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [ ] 3.3 Stream URL caching
 - [ ] 3.4 Spotify metadata enrichment
 - [x] 3.5 LRCLIB lyrics integration
-- [ ] 3.6 Playlists CRUD (uses Supabase)
+- [x] 3.6 Playlists CRUD (uses Supabase)
 - [ ] 3.7 Rate limiting middleware
 
 ### Phase 4: Core UI 🔒
@@ -150,5 +150,22 @@ cached (prevents poisoning). X-Cache HIT/MISS parity with search. All 5 live
 tests passed: known track returns full LRC, repeat is a cache HIT, nonsense
 title returns clean null, missing title/malformed id return 400, and the
 no-artist search fallback finds lyrics (Test 5). See KNOWN_ISSUE.md [3.5].
-Next: **Slice 3.6 — Playlists CRUD** (Supabase-backed, the first slice that
-writes to our Drizzle schema).
+Slice 3.6 complete: Playlists CRUD — Server Actions + TanStack Query hooks.
+First slice writing to our Drizzle schema, via the anon-key Supabase server
+client so RLS stays enforced (each user only sees/mutates their own rows).
+5 Server Actions in src/lib/playlists (create/update/delete/getMyPlaylists/
+getPlaylistWithTracks) + 3 track actions (addTrack appends at max+1,
+removeTrack, reorderTrack via a collision-safe sentinel position -1 shift
+against the unique (playlist_id, position) index — no RPC/migration needed).
+6 TanStack Query hooks (useMyPlaylists, usePlaylistTracks, useCreatePlaylist,
+useDeletePlaylist, useAddTrack, useRemoveTrack) invalidate+refetch on mutation
+(no optimistic updates this slice — Phase 4). Track metadata snapshotted as
+jsonb (zero-JOIN render). Key discovery: supabase-js does NOT camelCase for
+us — PostgREST resolves raw column names, so the Database type now remaps
+Drizzle camelCase → snake_case via a CamelToSnake transform (see
+KNOWN_ISSUE.md [3.6]). Verified live: all 12 CRUD steps passed (create,
+list, append×2, read, reorder, verify, rename, remove, verify, delete,
+cascade count=0). Deleted the temp /test-playlists page after passing.
+Next: **Phase 4 — Core UI** (4.1 sidebar navigation + library section).
+Remaining Phase 3 slices 3.3 (stream cache), 3.4 (Spotify metadata), 3.7
+(rate limiting) deliberately deferred — low value vs effort for MVP.

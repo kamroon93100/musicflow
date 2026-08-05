@@ -199,3 +199,20 @@
 - 404 (no match): cached null for 1 day, returns success:true
 - Network error: returns 502, NOT cached (prevents poisoning)
 - Both paths verified working
+
+## [3.6] Playlists CRUD verified against live Supabase
+- Status: ALL PASSED - full create/add/reorder/remove/delete cycle
+- Client: Supabase JS with RLS (user isolation enforced)
+- RLS: All policies working (SELECT/INSERT/UPDATE/DELETE own rows)
+- Reorder: Sentinel position -1 shift approach (collision-safe, verified)
+- Cascade: deletePlaylist removes playlist_tracks automatically
+- camelCase fix: database.types.ts now uses CamelToSnake type transform
+
+## [3.6] Supabase JS requires explicit snake_case column names
+- Root cause: PostgREST resolves raw column names, no camelCase transform
+- Fix: CamelToSnake type utility in database.types.ts
+- Impact: All Supabase queries must use snake_case (user_id, not userId)
+- Drizzle schema stays camelCase (source of truth)
+- Type safety preserved via ToSnake mapped type
+- Auth actions unaffected (single-word keys like id/email)
+- Timestamps: Drizzle types them Date, REST returns ISO strings (toIso helper)

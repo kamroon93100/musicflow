@@ -12,18 +12,36 @@ import type {
  * can't drift (Drizzle is the single source of truth). Used to type the
  * @supabase/ssr clients.
  *
- * Reads/writes go through Drizzle (service role); the Supabase client is
- * primarily for auth, but this keeps direct `supabase.from(...)` calls typed.
+ * COLUMN CASING: supabase-js sends query/insert keys VERBATIM to PostgREST,
+ * which resolves raw snake_case columns — it does not camelCase-transform for
+ * us. Drizzle's object model camelCases keys, so keys here are remapped
+ * camelCase → snake_case via ToSnake. That makes both request bodies
+ * ({ user_id }) and response objects (row.user_id) match the real columns;
+ * otherwise PostgREST fails with "Could not find the 'userId' column".
+ * Value types still come from Drizzle. Note: Drizzle types timestamptz as
+ * Date but REST returns ISO strings — callers handle both (see toIso).
+ *
  * Re-generate with `supabase gen types` once a real project exists if we
  * ever need the full remote shape.
  */
+
+/** "userId" → "user_id" (insert "_" before each uppercase letter, lowercase it). */
+type CamelToSnake<S extends string> = S extends `${infer Head}${infer Tail}`
+  ? `${Head extends Uppercase<Head> ? `_${Lowercase<Head>}` : Head}${CamelToSnake<Tail>}`
+  : S;
+
+/** Remap an object's keys to snake_case, keeping value types. */
+type ToSnake<T> = {
+  [K in keyof T as K extends string ? CamelToSnake<K> : K]: T[K];
+};
+
 export type Database = {
   public: {
     Tables: {
       users: {
-        Row: typeof users.$inferSelect;
-        Insert: typeof users.$inferInsert;
-        Update: Partial<typeof users.$inferInsert>;
+        Row: ToSnake<typeof users.$inferSelect>;
+        Insert: ToSnake<typeof users.$inferInsert>;
+        Update: Partial<ToSnake<typeof users.$inferInsert>>;
         // Supabase `GenericTable` requires `Relationships`. Drizzle models the
         // FKs (users is referenced by playlists, etc.) so supabase-js doesn't
         // need them for typing. Empty is correct and keeps `GenericSchema`
@@ -31,33 +49,33 @@ export type Database = {
         Relationships: [];
       };
       playlists: {
-        Row: typeof playlists.$inferSelect;
-        Insert: typeof playlists.$inferInsert;
-        Update: Partial<typeof playlists.$inferInsert>;
+        Row: ToSnake<typeof playlists.$inferSelect>;
+        Insert: ToSnake<typeof playlists.$inferInsert>;
+        Update: Partial<ToSnake<typeof playlists.$inferInsert>>;
         Relationships: [];
       };
       playlist_tracks: {
-        Row: typeof playlistTracks.$inferSelect;
-        Insert: typeof playlistTracks.$inferInsert;
-        Update: Partial<typeof playlistTracks.$inferInsert>;
+        Row: ToSnake<typeof playlistTracks.$inferSelect>;
+        Insert: ToSnake<typeof playlistTracks.$inferInsert>;
+        Update: Partial<ToSnake<typeof playlistTracks.$inferInsert>>;
         Relationships: [];
       };
       liked_tracks: {
-        Row: typeof likedTracks.$inferSelect;
-        Insert: typeof likedTracks.$inferInsert;
-        Update: Partial<typeof likedTracks.$inferInsert>;
+        Row: ToSnake<typeof likedTracks.$inferSelect>;
+        Insert: ToSnake<typeof likedTracks.$inferInsert>;
+        Update: Partial<ToSnake<typeof likedTracks.$inferInsert>>;
         Relationships: [];
       };
       listening_history: {
-        Row: typeof listeningHistory.$inferSelect;
-        Insert: typeof listeningHistory.$inferInsert;
-        Update: Partial<typeof listeningHistory.$inferInsert>;
+        Row: ToSnake<typeof listeningHistory.$inferSelect>;
+        Insert: ToSnake<typeof listeningHistory.$inferInsert>;
+        Update: Partial<ToSnake<typeof listeningHistory.$inferInsert>>;
         Relationships: [];
       };
       search_history: {
-        Row: typeof searchHistory.$inferSelect;
-        Insert: typeof searchHistory.$inferInsert;
-        Update: Partial<typeof searchHistory.$inferInsert>;
+        Row: ToSnake<typeof searchHistory.$inferSelect>;
+        Insert: ToSnake<typeof searchHistory.$inferInsert>;
+        Update: Partial<ToSnake<typeof searchHistory.$inferInsert>>;
         Relationships: [];
       };
     };
