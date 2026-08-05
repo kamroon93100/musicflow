@@ -240,3 +240,24 @@
 - Reduces server load and user-facing latency on failure
 - Note: the route's internal 2-Piped-instance fallback (fetchPiped) is
   legitimate failover, not a retry; it is unchanged
+
+## [4.3] NowPlayingBar fully wired with 3 isolated sub-components
+- Status: All controls visible and functional
+- Architecture: TrackInfo / PlaybackControls / VolumeControl, each memoized
+  and subscribing only to its own granular store selectors
+- Performance: only PlaybackControls re-renders on a position tick (~60fps);
+  TrackInfo and VolumeControl stay static (120fps rule #4)
+- Seek: controlled slider with a local drag snapshot; engine seek fires once
+  on release (onValueCommitted) so the rAF position tick can't fight the thumb
+- Volume: instant setVolume on change; mute toggle via a lastNonZero ref
+  (store has no separate muted flag; restore from ref, default 1)
+- Transport: 44px touch targets; next disabled on empty queue, previous on
+  empty history (a lone search-track play leaves both disabled)
+- Slider fill is bg-primary (#1DB954), the design-system green accent
+
+## [4.3] base-ui Slider API differs from Radix conventions
+- onValueCommit does NOT exist; the release event is onValueCommitted
+- Callback params are `number | readonly number[]`, not always number[]
+- Fixed: both seek and volume handlers normalize via Array.isArray(v) ? v[0] : v
+- Lesson: shadcn v4 sits on @base-ui/react, not Radix — verify slider event
+  names against base-ui before assuming Radix semantics

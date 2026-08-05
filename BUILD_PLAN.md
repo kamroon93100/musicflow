@@ -197,4 +197,28 @@ internal 2-instance fallback is legitimate, not a retry). Verified end-to-end:
 search returns real YouTube Music results with thumbnails; clicking a result
 shows the track in the bar immediately; the still-active Piped stream block
 shows a graceful error with no retry storm. See KNOWN_ISSUE.md [4.1].
-Next: the user's 4.3 — full NowPlayingBar wire-up (seek + volume).
+Slice 4.3 complete: full NowPlayingBar wire-up (seek + volume + transport).
+NowPlayingBar rewritten as 3 isolated memoized sub-components + a shell that
+subscribes to nothing, so a position tick (~60fps from the rAF progress loop)
+re-renders ONLY PlaybackControls; TrackInfo and VolumeControl stay static
+(120fps rule #4). TrackInfo (left): thumbnail/title/artist + loading spinner
+overlay + red "Stream unavailable" on streamError. PlaybackControls (center):
+SkipBack / Play-Pause / SkipForward (44px touch targets, impeccable) + seek bar
+with m:ss position/duration labels. Seek is a controlled slider with a local
+drag snapshot (so the rAF position tick can't fight the thumb) that fires
+engine seek() once on release via base-ui's onValueCommitted; disabled when no
+track / duration 0 / stream error. Transport: next disabled when queue empty,
+previous when history empty (a lone search track → both disabled). VolumeControl
+(right): Volume2/VolumeX icon toggles mute via a lastNonZero ref (no store
+change), instant setVolume on change; green fill is the slider's bg-primary
+(#1DB954). Motion per emil: seek is real-time data → linear, no spring; volume
+is instant. formatDuration(seconds → m:ss) added to src/lib/utils.ts (shared;
+search-result-item keeps its local copy, untouched). Base-ui gotcha surfaced by
+tsc: the Slider release event is onValueCommitted (NOT onValueCommit) and
+callbacks receive `number | readonly number[]` (not always number[]) —
+normalized with Array.isArray in both handlers (see KNOWN_ISSUE.md [4.3]).
+Verified end-to-end: seek ticks live, drag-to-jump works, volume + mute toggle
+work, prev/next disabled for a lone track, play/pause and the stream-error state
+are preserved. See KNOWN_ISSUE.md [4.3].
+Next: the user's next Phase 4 slice (sidebar/library sections, Home sections, or
+the track-list page) per their roadmap.
