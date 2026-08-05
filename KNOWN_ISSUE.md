@@ -186,3 +186,16 @@
 - "Shape of You" and "shape of you" hit the same key
 - Normalization via cacheKey helper (trim + lowercase + single-space)
 - Impact: Positive - fewer redundant Piped calls
+
+## [3.5] LRCLIB lyrics integration verified live
+- Status: All 5 tests passed
+- Positive cache: 30 days (lyrics never change)
+- Negative cache: 1 day (community may add lyrics later)
+- Search fallback: works when artist missing (Test 5 proved it)
+- X-Cache header parity with search route
+- Shape of You returned full synced LRC with timestamps
+
+## [3.5] LRCLIB 404 vs outage handling
+- 404 (no match): cached null for 1 day, returns success:true
+- Network error: returns 502, NOT cached (prevents poisoning)
+- Both paths verified working

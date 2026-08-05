@@ -23,7 +23,7 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [x] 3.2 Search API cache layer
 - [ ] 3.3 Stream URL caching
 - [ ] 3.4 Spotify metadata enrichment
-- [ ] 3.5 LRCLIB lyrics integration
+- [x] 3.5 LRCLIB lyrics integration
 - [ ] 3.6 Playlists CRUD (uses Supabase)
 - [ ] 3.7 Rate limiting middleware
 
@@ -138,5 +138,17 @@ HIT | MISS` on 200. Empty results cached 5 min (prevents Piped hammering on
 typos). Best-effort writes + graceful no-op without UPSTASH keys. Verified
 live: MISS on first query, HIT on repeat, ~8x faster on hit, 20 real results,
 body shape unchanged. See KNOWN_ISSUE.md [3.2].
-Next: **Slice 3.3 — Stream URL caching** (decide whether/when to cache Piped
-stream URLs; currently uncached by design — URLs are region-locked).
+Slice 3.5 complete: LRCLIB lyrics integration — /api/lyrics/[id] route fetches
+synced LRC + plain lyrics by track title + artist; getLyrics client in
+src/lib/api/lrclib.ts owns the cache (same pattern as searchSongs). Primary
+LRCLIB /api/get lookup, with an /api/search fallback when the artist is null
+or the primary misses (Piped artist is a channel name). Cache: 30 days for
+found lyrics (immutable), 1 day for misses (LRCLIB is community-curated and
+gains lyrics). 404 vs outage are distinguished — a no-match caches a null
+result as success, while a reachable-LRCLIB failure returns 502 and is never
+cached (prevents poisoning). X-Cache HIT/MISS parity with search. All 5 live
+tests passed: known track returns full LRC, repeat is a cache HIT, nonsense
+title returns clean null, missing title/malformed id return 400, and the
+no-artist search fallback finds lyrics (Test 5). See KNOWN_ISSUE.md [3.5].
+Next: **Slice 3.6 — Playlists CRUD** (Supabase-backed, the first slice that
+writes to our Drizzle schema).
