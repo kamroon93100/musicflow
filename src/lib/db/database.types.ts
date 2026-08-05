@@ -52,7 +52,18 @@ export type Database = {
         Row: ToSnake<typeof playlists.$inferSelect>;
         Insert: ToSnake<typeof playlists.$inferInsert>;
         Update: Partial<ToSnake<typeof playlists.$inferInsert>>;
-        Relationships: [];
+        // One-to-many playlist -> playlist_tracks (FK playlist_id -> id, cascade).
+        // Added so `select("*, playlist_tracks(count)")` type-infers in
+        // getMyPlaylists. Mirrors the FK Drizzle already models.
+        Relationships: [
+          {
+            foreignKeyName: "playlist_tracks_playlist_id_fkey",
+            columns: ["id"],
+            isOneToOne: false,
+            referencedRelation: "playlist_tracks",
+            referencedColumns: ["playlist_id"],
+          },
+        ];
       };
       playlist_tracks: {
         Row: ToSnake<typeof playlistTracks.$inferSelect>;

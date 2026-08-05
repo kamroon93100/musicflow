@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 import { makeQueryClient } from "@/lib/query-client";
+import { Toaster } from "@/components/ui/toast";
 
 export default function Providers({
   children,
@@ -24,6 +25,9 @@ export default function Providers({
       >
         {children}
       </ThemeProvider>
+      {/* Toaster mounts the imperative `toast` manager's portal (Slice 4.5) —
+          needed for error/rollback toasts once mutations surface them. */}
+      <Toaster />
       {process.env.NODE_ENV === "development" && <ReactQueryDevtools />}
     </QueryClientProvider>
   );

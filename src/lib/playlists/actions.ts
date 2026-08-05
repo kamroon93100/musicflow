@@ -39,6 +39,25 @@ function toIso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value;
 }
 
+/**
+ * Count aggregate from `select("playlist_tracks(count)")`. PostgREST always
+ * returns the to-many embed as `[{ count: N }]`, but the typed Database can
+ * surface it as a single `{ count: number }` — normalize either shape.
+ */
+function countOf(value: unknown): number {
+  if (Array.isArray(value)) {
+    const first = value[0];
+    if (first && typeof first === "object" && "count" in first) {
+      return (first as { count: number }).count ?? 0;
+    }
+    return 0;
+  }
+  if (value && typeof value === "object" && "count" in value) {
+    return (value as { count: number }).count ?? 0;
+  }
+  return 0;
+}
+
 /** Map a playlists row to the user-facing shape (drop user_id/cover_url). */
 function toPlaylist(row: PlaylistsRow): Playlist {
   return {
@@ -82,9 +101,15 @@ export async function createPlaylist(
     .single();
 
   if (error || !data) return { error: error?.message ?? "Failed to create playlist" };
-  return toPlaylist(data);
+  // A brand-new playlist has zero tracks (accurate).
+  return { ...toPlaylist(data), trackCount: 0 };
 }
 
+/**
+ * Current user's playlists, newest first. Embeds a Supabase count aggregate so
+ * the library/sidebar can render "N tracks" with zero JOINs. The
+ * playlist_tracks relationship entry (database.types.ts) makes this type-safe.
+ */
 export async function getMyPlaylists(): Promise<Playlist[] | { error: string }> {
   const userId = await getUserId();
   if (!userId) return { error: "Not authenticated" };
@@ -92,12 +117,15 @@ export async function getMyPlaylists(): Promise<Playlist[] | { error: string }> 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("playlists")
-    .select()
+    .select("*, playlist_tracks(count)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) return { error: error.message };
-  return (data ?? []).map(toPlaylist);
+  return (data ?? []).map((row) => ({
+    ...toPlaylist(row),
+    trackCount: countOf(row.playlist_tracks),
+  }));
 }
 
 export async function getPlaylistWithTracks(
@@ -133,7 +161,8 @@ export async function getPlaylistWithTracks(
     metadata: (r.track_metadata as Track | null) ?? null,
   }));
 
-  return { ...toPlaylist(playlist), tracks };
+  // tracks was fully fetched — its length is the exact count.
+  return { ...toPlaylist(playlist), trackCount: tracks.length, tracks };
 }
 
 export async function updatePlaylist(

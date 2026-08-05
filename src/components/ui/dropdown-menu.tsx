@@ -53,6 +53,14 @@ function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
+/**
+ * ⚠️ KNOWN_ISSUE [1.4]: base-ui's MenuGroupLabel throws `MenuGroupContext is
+ * missing` unless rendered inside a MenuPrimitive.Group. Rather than force
+ * every caller to wrap (adds an extra <DropdownMenuGroup> for a static label),
+ * the app convention is to use a PLAIN styled <div> for section headers
+ * (see top-bar.tsx email / search Add-to-playlist). Avoid this component for
+ * static headers; reach for it only if you actually need a group label.
+ */
 function DropdownMenuLabel({
   className,
   inset,

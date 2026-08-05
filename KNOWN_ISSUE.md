@@ -270,3 +270,52 @@
 - Seek + volume controls present
 - Close: X button works, page state preserved
 - Lyrics: Section available (loads from LRCLIB on demand)
+
+## [4.5] Touch reorder deferred (coarse pointer)
+- Status: Deferred intentionally this slice
+- What: useIsCoarsePointer() (matchMedia "(pointer: coarse)" via
+  useSyncExternalStore) turns off the drag listener on touch — dragListener
+  is false, so the list is scroll-safe; row taps (play / remove) are untouched.
+- Why: naive pointer-drag on touch reads as "broken" — scrolling fights the
+  drag handle and there's no affordance for lift. A real solution needs a
+  long-press-to-lift gesture + haptics (like Apple Music).
+- Resolution: revisit with a long-press (pressDelay) gesture in Phase 6 polish.
+
+## [4.5] TanStack Virtual waived on playlist detail (CLAUDE.md rule #6 exception)
+- Status: Documented exception; revisit at 500+ tracks
+- What: the virtualized-track-list rule is waived for the playlist track list.
+  framer Reorder.Group reorders DOM children directly — each Reorder.Item needs
+  its measured height in the flow, and a virtual window hides off-screen rows,
+  so virtualization and drag-reorder fight each other.
+- Why: MVP playlists are tens-to-low-hundreds of tracks; rendering them all is
+  cheap. Reorder wins over virtualization here.
+- Resolution: if a playlist exceeds ~500 tracks, revisit (a virtualized
+  Reorder.Group is a known-hard problem; consider switching to a dnd-kit
+  sortable list, which virtualizes cleanly).
+
+## [4.5] DropdownMenuLabel MenuGroupContext regression re-hit (search "Add to playlist")
+- Status: Fixed again — plain styled div, same as the [1.4] fix
+- What: the search row's "Add to playlist" menu header used DropdownMenuLabel,
+  which re-triggered the base-ui MenuGroupLabel bug — it throws "MenuGroupContext
+  is missing" unless inside a Menu.Group parent.
+- Why it regressed: the [1.4] fix (plain div) was applied to top-bar.tsx only;
+  the new search component reached for the exported DropdownMenuLabel without
+  knowing its constraint.
+- Prevention: ⚠️ KNOWN_ISSUE comment added above the DropdownMenuLabel export in
+  src/components/ui/dropdown-menu.tsx so future callers see the constraint.
+- Considered + rejected: auto-wrapping DropdownMenuLabel in a Menu.Group would
+  add an empty group per static header — deferred as a Phase 6 polish candidate.
+
+## [4.5] Reorder race condition serialized via UI lock
+- Status: Fixed with a UI-level lock
+- What: server reorderTrack is NOT transactional — two overlapping reorders can
+  interleave and corrupt the (playlist_id, position) ordering invariant the
+  sentinel -1 shift rebuilds. If a drag could start while a previous reorder
+  mutation was still in flight, the second newPosition would be computed against
+  a stale order and the first result could land after the second.
+- Fix: dragListener={!reorderPending && !coarse} — every row's drag handle is
+  disabled while a reorder mutation is pending, serializing reorders to one in
+  flight at a time. The optimistic move already applied, so the lock is barely
+  perceptible; onReorder keeps updating visuals continuously.
+- Residual: a reorder landing from another tab (multi-device) could still race
+  the local one; accepted for MVP single-user editing.

@@ -9,6 +9,13 @@ export interface Playlist {
   isPublic: boolean;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Number of tracks. Optional because only some paths fetch it: getMyPlaylists
+   * computes a Supabase count aggregate, getPlaylistWithTracks uses
+   * tracks.length, createPlaylist sets 0. updatePlaylist omits it (no count
+   * query) — callers must default `?? 0` when displaying.
+   */
+  trackCount?: number;
 }
 
 /** A single track entry within a playlist (playlist_tracks row). */

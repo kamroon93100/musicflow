@@ -32,10 +32,11 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [ ] 4.2 Top bar with search
 - [ ] 4.3 NowPlayingBar (bottom fixed player)
 - [x] 4.4 Full-screen player (expandable, spring physics)
-- [ ] 4.5 Virtualized track list component
+- [ ] 4.5 Virtualized track list component — waived on playlist detail
+      (reorder-vs-virtualization conflict, KNOWN_ISSUE [4.5]); revisit at 500+ tracks
 - [ ] 4.6 Home page with sections
 - [ ] 4.7 Search page with results
-- [ ] 4.8 Playlist detail page
+- [x] 4.8 Playlist detail page
 
 ### Phase 5: Advanced Features 🔒
 - [ ] 5.1 Synced lyrics overlay
@@ -246,5 +247,38 @@ isFullScreenPlayerOpen + open/close in ui-store (A3). Verified end-to-end: opens
 from bar with spring + art morph, all controls functional, closes cleanly via X /
 backdrop / swipe, search page and bar state preserved across open/close. See
 KNOWN_ISSUE.md [4.4].
+Slice 4.5 complete: playlist detail page with drag-reorder + play-all.
+PlaylistHeader (memo'd): deterministic FNV-1a gradient cover (TODO(phase-5):
+real cover art once actions/toPlaylist exposes coverUrl), name/description/
+meta "N tracks · X hr Y min" (new formatTotalDuration in utils), 56px brand
+Play + 48px ghost Shuffle (both hidden when empty), "..." menu → Edit details /
+Delete (destructive). Sticky #/Title/Time column row sticks under the top bar
+while the list scrolls. PlaylistTrackList: framer Reorder.Group of memo'd
+PlaylistTrackRows — drag → EXACTLY ONE mutation (onReorder mirrors to a ref
+for instant visuals, onDragEnd fires the reorder once, reading orderRef not
+state to dodge the batching stale-closure); RACE LOCK dragListener={!reorderPending
+&& !coarse} serializes in-flight reorders (server reorder is not transactional);
+touch reorder deferred via useIsCoarsePointer (matchMedia "(pointer: coarse)");
+resync from cache truth gated by dragRef so a refetch can't clobber an active
+drag; valid ul>li>div nesting; empty state with brand "Go to search" Link.
+PlaylistTrackRow: index ↔ play-icon hover swap, equalizer bars animate scaleY
+only while that track plays, X-button-as-sibling for remove (no nested
+buttons), whileTap 0.995. Hooks layer: useReorderTrack optimistic pure row move
++ position normalization 0..n-1; useUpdatePlaylist optimistic applyUpdate to
+both ["playlists"] and ["playlist-tracks", id] caches; useRemoveTrack optimistic
+decrement trackCount; useAddTrack optimistic temp id (opt:<id>:<seq>) for the
+search flow. EditPlaylistDialog: seeds from playlist on open, no-op guard,
+mutateAsync + inline error. Delete confirm Dialog → deletePlaylist →
+router.push("/library"), error kept in-dialog with toast. Search result row
+restructured (shell + play-row + trailing "..." DropdownMenu): row button +
+sibling "..." menu + CreatePlaylistDialog OUTSIDE the menu popup (base-ui
+Menu.Popup unmounts content on close — dialog would vanish); chain-add via
+onCreated; lazy AddToPlaylistMenu fetches useMyPlaylists only while open; the
+"Add to playlist" header is a plain div, NOT DropdownMenuLabel ([1.4] regression
+re-hit — see KNOWN_ISSUE [4.5]). Toaster mounted in providers; toast viewport
+raised to bottom-28 (above the 90px player bar). Verified end-to-end by the
+user: gradient cover, library/search wiring, drag-reorder (desktop), equalizer
+on active row, stream-block handling, active-track indicator. See KNOWN_ISSUE.md
+[4.5].
 Next: the user's next Phase 4 slice (sidebar/library sections, Home sections, or
 the track-list page) per their roadmap.
