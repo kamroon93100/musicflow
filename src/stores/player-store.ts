@@ -21,6 +21,7 @@ import {
 import type { StreamInfo, Track } from "@/types/piped";
 import { audioEngine } from "@/lib/audio/engine";
 import { MediaSessionController } from "@/lib/audio/media-session";
+import { trackPlayEvent } from "@/lib/history/actions";
 
 export type RepeatMode = "off" | "one" | "all";
 
@@ -112,6 +113,10 @@ export function setStreamResolver(
 /* ---- Internal, non-reactive state -------------------------------------------- */
 let preloadedTrack: Track | null = null; // the buffered "next" (engine promotes it)
 let preloadInFlight = false;
+// Set of track IDs already recorded this session — prevents duplicate events
+// from replays within the same session (server also throttles 5 min via
+// trackPlayEvent, so this is belt-and-suspenders).
+const recordedThisSession = new Set<string>();
 
 const mediaSession = new MediaSessionController(audioEngine);
 mediaSession.attach();
@@ -120,6 +125,8 @@ const REPEAT_CYCLE: RepeatMode[] = ["off", "one", "all"];
 
 const PRELOAD_FRACTION = 0.8;
 const PRELOAD_REMAINING_SECONDS = 20;
+/** A play is only recorded once the listener has actually listened this long. */
+const PLAY_RECORD_THRESHOLD_SECONDS = 30;
 
 /* ---- Store -------------------------------------------------------------------- */
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
@@ -266,6 +273,7 @@ function stopPlayback(): void {
   mediaSession.clear();
   preloadedTrack = null;
   preloadInFlight = false;
+  recordedThisSession.clear(); // fresh session → allow re-recording on next play
   usePlayerStore.setState({
     currentTrack: null,
     isPlaying: false,
@@ -315,6 +323,23 @@ function maybePreloadNext(): void {
   const next = s.queue[0];
   if (!next) return;
   void preloadTrack(next);
+}
+
+/**
+ * Record a play event once per song per session, at the 30s threshold.
+ * Best-effort: swallows errors so playback never crashes on tracking failure
+ * (Karpathy: user experience > telemetry). Rolls back the session-set on
+ * failure so a genuine re-listen after a network blip can retry.
+ */
+function maybeRecordPlay(position: number): void {
+  if (position < PLAY_RECORD_THRESHOLD_SECONDS) return;
+  const track = usePlayerStore.getState().currentTrack;
+  if (!track) return;
+  if (recordedThisSession.has(track.id)) return;
+  recordedThisSession.add(track.id);
+  void trackPlayEvent(track, position).catch(() => {
+    recordedThisSession.delete(track.id);
+  });
 }
 
 function handleEngineEnd(): void {
@@ -369,5 +394,6 @@ audioEngine.on("error", () => {
 });
 audioEngine.on("progress", (e) => {
   usePlayerStore.setState({ position: e.position, duration: e.duration });
+  maybeRecordPlay(e.position);
   maybePreloadNext();
 });

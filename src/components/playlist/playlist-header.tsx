@@ -37,16 +37,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { gradientFor } from "@/lib/cover";
 import { cn, formatTotalDuration } from "@/lib/utils";
 import type { PlaylistWithTracks } from "@/types/playlist";
-
-/** Four pre-defined dark gradients — hashed by playlist.id for stability. */
-const COVER_GRADIENTS = [
-  "bg-[radial-gradient(circle_at_30%_20%,#1e3264_0%,#121212_70%)]",
-  "bg-[radial-gradient(circle_at_70%_30%,#503750_0%,#121212_70%)]",
-  "bg-[radial-gradient(circle_at_50%_10%,#1f3d2e_0%,#121212_70%)]",
-  "bg-[radial-gradient(circle_at_25%_75%,#4d2f35_0%,#121212_70%)]",
-];
 
 interface PlaylistHeaderProps {
   playlist: PlaylistWithTracks;
@@ -63,10 +56,7 @@ function PlaylistHeaderBase({
   onEdit,
   onDelete,
 }: PlaylistHeaderProps) {
-  const gradient = useMemo(
-    () => COVER_GRADIENTS[hashOf(playlist.id) % COVER_GRADIENTS.length],
-    [playlist.id],
-  );
+  const gradient = useMemo(() => gradientFor(playlist.id), [playlist.id]);
 
   const { name, description, tracks } = playlist;
   const hasTracks = tracks.length > 0;
@@ -167,16 +157,6 @@ function PlaylistHeaderBase({
       </div>
     </header>
   );
-}
-
-/** FNV-1a 32-bit hash of a string → unsigned int (stable, no random). */
-function hashOf(value: string): number {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < value.length; i++) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return hash >>> 0;
 }
 
 const PlaylistHeader = memo(PlaylistHeaderBase);
