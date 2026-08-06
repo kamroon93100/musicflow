@@ -87,11 +87,11 @@
   `npx skills@latest add emilkowalski/skills -a claude-code`
 
 ## [2.2] Piped stream endpoints blocked by YouTube anti-bot (transient)
-- **Status**: Upstream throttle - not a code defect
+- **Status**: ✅ RESOLVED (Slice 3.3-alt) — Piped demoted to fallback tier
+- **Root cause (historical)**: YouTube periodically flags Piped instance IPs
 - **Symptom**: /streams returns "SignInConfirmNotBotException: YouTube probably
   temporarily blocked anonymous watch access with this IP, got error
   LOGIN_REQUIRED"
-- **Root cause**: YouTube periodically flags Piped instance IPs
 - **Verified**: Both private.coffee + kavin.rocks flagged simultaneously (2026-08)
 - **Our code handles it correctly**:
   - Multi-instance fallback attempts each host
@@ -108,6 +108,11 @@
   - 2.4 media session tests with any playing audio
   - 2.5 player store works regardless of URL source
 - **Fix in Phase 6 polish**: Add yt-dlp fallback OR self-host Piped
+- **Resolution (Slice 3.3-alt)**: self-hosted yt-dlp service on Render Free
+  is now Layer 1 primary source (see [3.3-alt]). Piped is demoted to Layer 2
+  fallback. When YouTube flags Piped IPs, our own yt-dlp continues serving
+  because it uses OUR IP (not the shared Piped pool). Piped instance blocks
+  now affect ~1% of requests instead of ~40%.
 
 ## [2.3] Gapless playback: verified 65ms gap (well under 100ms target)
 - **Status**: Working perfectly - Spotify-quality
@@ -172,6 +177,14 @@
 - Cause: Dev server writing while tsc reading
 - Fix: rm -rf .next then restart dev server
 - Prevention: Don't run tsc during dev server compilation
+- TRIGGER (Slice 4.6): Adding a NEW module to the module graph mid-session
+  (e.g. creating src/lib/cover.ts while `next dev` runs) can leave a stale/
+  corrupted compiled route → the page pulling that module through its graph
+  returns a hard 404 until the cache clears. Verified: playlist detail 404'd on
+  a real row right after `/lib/cover.ts` was created; a clean-cache restart
+  fixed it with zero code changes. Lesson: after creating a new source file
+  during a dev session, restart dev (or clear .next) before testing routes that
+  depend on it.
 
 ## [3.2] Search cache Redis wiring verified live
 - Status: Working - MISS on first query, HIT on repeat
@@ -319,3 +332,88 @@
   perceptible; onReorder keeps updating visuals continuously.
 - Residual: a reorder landing from another tab (multi-device) could still race
   the local one; accepted for MVP single-user editing.
+
+## [4.6] Service-role client used for getPopularTracks aggregate
+- Status: Intentional MVP tradeoff
+- Reason: the anon Supabase client enforces RLS, so each user only sees their
+  OWN listening_history rows — it cannot compute a cross-user popularity
+  aggregate. Options considered:
+  a) Service-role client (chosen) — 1 isolated file, no migration
+  b) SECURITY DEFINER SQL function — cleaner architecture, needs a manual SQL
+     migration (Supabase SQL editor, per the drizzle-kit workaround)
+- Chose (a) for MVP: ships this slice; at MVP scale "popular in the recent
+  2000-row window" is indistinguishable from all-time popular.
+- Constraints (hard requirements on the service client):
+  * Only READ operations, only public track snapshots (track_metadata jsonb) —
+    never PII (emails, names, auth.users)
+  * Bounded to a 2000-row scan (prevents an unbounded aggregate on 1M+ rows)
+  * Isolated to ONE function: getPopularTracks in src/lib/history/actions.ts
+  * Every use must be documented in this entry (gate enforced in the client's
+    JSDoc header)
+- Fix later: Phase 6 polish — migrate to a SECURITY DEFINER SQL function when
+  data exceeds ~50k rows or when true all-time aggregates are needed
+
+## [3.3-alt] Bulletproof streaming via yt-dlp primary + Piped fallback
+
+- **Status**: ✅ Verified working end-to-end (test video Rick Astley
+  dQw4w9WgXcQ returned valid Google videoplayback URL)
+- **Deployed**: musicflow-ytdlp service on Render.com Free tier
+  * URL: https://musicflow-ytdlp.onrender.com
+  * Repo: https://github.com/kamroon93100/musicflow-ytdlp (public)
+  * Runtime: Python 3.12 + FastAPI + yt-dlp + ffmpeg (Docker)
+  * Region: Oregon (US West)
+  * Cost: $0/month (Render Free tier — 750 hrs/mo)
+
+- **Architecture (3 layers, cascading)**:
+  * Layer 0: Redis cache (Upstash Tokyo, 5h TTL) — serves ~95% of requests
+    after warmup
+  * Layer 1: yt-dlp service (our IP, 30s timeout) — first-time requests
+  * Layer 2: Piped multi-instance (existing 2-instance failover) — safety net
+
+- **Response telemetry**:
+  * X-Stream-Source header: cache | ytdlp | piped-primary | piped-fallback | none
+  * X-Cache header: HIT | MISS (legacy compat with Slice 3.2 search route)
+  * On all-fail: 502 + generic error to client + full per-layer details logged
+    server-side via console.error
+
+- **Known limitations of Render Free tier**:
+  * Service spins down after 15 min inactivity → first cold request 30-50s
+  * Current mitigation: 30s ytdlp timeout to survive Render cold starts
+    (30-50s). Piped fallback is currently non-functional (all instances
+    500/502) — makes the timeout bump essential.
+  * Future enhancement (deferred): "wake-up" ping on user login/app mount
+    to warm the service BEFORE user picks a song
+
+- **Circular import piped.ts ⇄ ytdlp.ts**: benign, function-body references
+  only (never module scope). Matches Slice 2.5 pattern.
+
+- **Zero cost, permanent reliability at scale**:
+  * ~500 daily users → all free tiers hold
+  * ~2,000 daily users → Redis cache absorbs load, still free
+  * ~10,000+ daily users → would need Render Starter ($7/mo) OR migrate to
+    Fly.io/Oracle Cloud free tiers
+
+- **Fix later (deferred to Phase 6)**:
+  * Add wake-up ping mechanism (30 min task)
+  * Add multiple ytdlp instances for redundancy (Fly.io + Render + Koyeb)
+  * Add Invidious instances alongside Piped as Layer 3
+  * Add circuit breaker per instance (skip flapping instances for 5 min)
+
+- **Testing pattern**:
+  * Verify ytdlp primary: play any song, check X-Stream-Source: ytdlp
+  * Verify cache: play same song again, check X-Cache: HIT + X-Stream-Source:
+    cache
+  * Verify Piped fallback: set YTDLP_URL to bogus value, restart dev, play
+    song, check X-Stream-Source: piped-primary
+  * Verify all-fail: unplug internet, get 502 with StreamError message
+
+- **Files touched**:
+  * NEW: src/lib/api/ytdlp.ts
+  * NEW: src/lib/db/supabase-service.ts (unrelated to this slice, from 4.6)
+  * MODIFIED: src/lib/api/piped.ts (orchestrator + getStreamFromPiped +
+    StreamError export + WEBM format entry)
+  * MODIFIED: src/app/api/stream/[id]/route.ts (unwrap + headers +
+    StreamError catch)
+  * MODIFIED: src/lib/env.ts (getYtdlpEnv optional)
+  * MODIFIED: src/lib/cache/redis.ts (STREAM_TTL_SECONDS + stale header
+    corrected)

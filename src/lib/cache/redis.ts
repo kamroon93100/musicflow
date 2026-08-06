@@ -14,8 +14,8 @@
  * This matches the stream-resolver / lazy-secret seams used elsewhere.
  *
  * TTLs follow CLAUDE.md's cache rules exactly (search 5m, metadata 24h,
- * lyrics 30d). Stream URLs intentionally stay uncached here — Piped URL parts
- * are region-locked/short-lived (decision revisited in Slice 3.3).
+ * lyrics 30d). Stream URLs are cached 5h (STREAM_TTL_SECONDS) — under the
+ * ~6h YouTube URL expiry, leaving buffer for clock drift (Slice 3.3-alt).
  */
 import { Redis } from "@upstash/redis";
 import { getRedisEnv } from "@/lib/env";
@@ -23,6 +23,10 @@ import { getRedisEnv } from "@/lib/env";
 export const SEARCH_TTL_SECONDS = 300; // 5 min
 export const METADATA_TTL_SECONDS = 86_400; // 24 h
 export const LYRICS_TTL_SECONDS = 2_592_000; // 30 d
+/** Stream URL cache TTL (5h). Under the ~6h YouTube URL expiry, leaves buffer
+ *  for clock drift. Set by getStreamUrl orchestrator in src/lib/api/piped.ts
+ *  (Slice 3.3-alt). */
+export const STREAM_TTL_SECONDS = 5 * 3600;
 
 const KEY_PREFIX = "muuzic";
 

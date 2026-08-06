@@ -75,3 +75,27 @@ export function getRedisEnv(): { url: string; token: string } | null {
   }
   return cachedRedisEnv;
 }
+
+/* ---- Optional yt-dlp env (Slice 3.3-alt) -------------------------------------
+ * YTDLP_URL is OPTIONAL. When unset, the streaming orchestrator degrades to
+ * Piped-only (see src/lib/api/piped.ts getStreamUrl). Kept separate from
+ * getServerEnv() — Supabase auth must never depend on yt-dlp being configured.
+ */
+const ytdlpEnvSchema = z.object({
+  url: z.url(),
+});
+
+let cachedYtdlpEnv: string | null | undefined;
+
+// Callers that need the validated URL string should prefer this over
+// process.env.YTDLP_URL directly. Boolean presence checks (see piped.ts
+// orchestrator) can use either.
+export function getYtdlpEnv(): string | null {
+  if (cachedYtdlpEnv === undefined) {
+    const parsed = ytdlpEnvSchema.safeParse({
+      url: process.env.YTDLP_URL,
+    });
+    cachedYtdlpEnv = parsed.success ? parsed.data.url : null;
+  }
+  return cachedYtdlpEnv;
+}
