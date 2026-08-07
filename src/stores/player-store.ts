@@ -18,7 +18,11 @@ import {
   type StreamSource,
   type TrackMetadata,
 } from "@/types/audio";
-import type { StreamInfo, Track } from "@/types/piped";
+import type {
+  StreamInfo,
+  Track,
+  TrackMetadata as PipedTrackMetadata,
+} from "@/types/piped";
 import { audioEngine } from "@/lib/audio/engine";
 import { MediaSessionController } from "@/lib/audio/media-session";
 import { trackPlayEvent } from "@/lib/history/actions";
@@ -231,6 +235,39 @@ function toMetadata(track: Track): TrackMetadata {
   };
 }
 
+/**
+ * Fire-and-forget enrichment (Slice 4.10 Phase 3). Requests /api/enrich after a
+ * track starts and MERGES the returned album/cover metadata into the store.
+ * Guards: only fires when the track has an artist (MB needs one), only writes
+ * when the SAME track is still current (user may have skipped), never blocks
+ * playback, never retries. The server caches 30d, so replays hit cache.
+ */
+function fireEnrichment(track: Track): void {
+  if (!track.artist) return; // MB query needs an artist — skip otherwise
+  const params = new URLSearchParams({
+    title: track.title,
+    artist: track.artist,
+  });
+  void fetch(`/api/enrich/${encodeURIComponent(track.id)}?${params.toString()}`)
+    .then((res) => res.json())
+    .then(
+      (json: { success?: boolean; data?: PipedTrackMetadata | null }) => {
+        if (!json.success || !json.data) return;
+        const current = usePlayerStore.getState().currentTrack;
+        if (!current || current.id !== track.id) return; // stale — user skipped
+        usePlayerStore.setState({
+          currentTrack: {
+            ...current,
+            metadata: { ...(current.metadata ?? {}), ...json.data },
+          },
+        });
+      },
+    )
+    .catch(() => {
+      // silent — enrichment failure never breaks playback
+    });
+}
+
 /** Fetch + play a single track, updating store + media session. */
 async function startTrack(track: Track): Promise<void> {
   preloadedTrack = null;
@@ -271,6 +308,9 @@ async function startTrack(track: Track): Promise<void> {
       streamError: { code, message },
     });
   }
+  // On-PLAY enrichment (Slice 4.10 Phase 3): after the stream settles (success
+  // or error), fire-and-forget the MB enrich request. Never blocks audio.
+  fireEnrichment(track);
 }
 
 async function playQueue(tracks: Track[], startIndex = 0): Promise<void> {
