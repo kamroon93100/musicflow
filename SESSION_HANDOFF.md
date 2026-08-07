@@ -1,3 +1,42 @@
+---
+# SESSION END — 2026-08-07 — SLICES 4.7 → 4.10 SHIPPED
+
+## Shipped in This Session (14 commits)
+
+Slice 4.7 — URL-synced Search + Cmd/Ctrl+K
+Slice 4.8 — Truth Tightening (6 deps removed, CLAUDE.md corrected)
+Slice 4.9 — Streaming Lifeblood (4 phases)
+  - Structured error codes
+  - Warming-up UI state
+  - Vercel cron pre-warm
+  - Piped host health cooldown
+Slice 4.10 — Metadata Enrichment (4 phases)
+  - TrackMetadata type + LRCLib duration
+  - YouTube Data API v3 enrichment
+  - MusicBrainz + CAA on play
+  - UI consumption with progressive artwork
+
+## Deployment Requirements
+
+Before next Vercel deploy, set in Vercel Environment Variables:
+- YOUTUBE_API_KEY (min 20 chars, YouTube Data API v3)
+- CRON_SECRET (min 16 chars, matches .env.local)
+- All existing keys (Supabase, Upstash, YTDLP_URL, NEXT_PUBLIC_*)
+
+Cron requires Vercel Hobby plan or higher (free tier includes cron).
+
+## Manual Verification Needed
+- [ ] Play track — album name appears in full-screen player after ~2s
+- [ ] Cover art upgrades from YouTube thumbnail to CAA where available
+- [ ] Verified badge shows on VEVO/Official tracks
+- [ ] Cmd+K global shortcut works
+- [ ] Warming-up state shows if Render is cold-starting
+
+## Next Session
+Roadmap position: Slice 4.11 — Personal Recommendations
+Based on: listening_history + MusicBrainz similar-artists
+---
+
 # SESSION UPDATE — 2026-08-07 — Slice 4.7 Shipped
 
 ## What Was Built
