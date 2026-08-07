@@ -32,6 +32,7 @@ export const env = {
 const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 chars"),
+  YOUTUBE_API_KEY: z.string().min(20, "YOUTUBE_API_KEY looks invalid"),
 });
 
 let cachedServerEnv: z.infer<typeof serverEnvSchema> | undefined;
@@ -46,6 +47,7 @@ export function getServerEnv() {
     cachedServerEnv = serverEnvSchema.parse({
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
       CRON_SECRET: process.env.CRON_SECRET,
+      YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
     });
   }
   return cachedServerEnv;
