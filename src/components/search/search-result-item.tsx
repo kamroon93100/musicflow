@@ -16,6 +16,7 @@ import { useAddTrack, useMyPlaylists } from "@/hooks/use-playlists";
 import { toast } from "@/components/ui/toast";
 import type { Track } from "@/types/piped";
 import { cn } from "@/lib/utils";
+import { pickArtwork } from "@/lib/streaming/artwork";
 
 /** Seconds → m:ss (e.g. 274 → "4:34"). Null → "–". */
 function formatDuration(seconds: number | null): string {
@@ -107,10 +108,10 @@ function SearchResultItemBase({ track, active, onSelect }: SearchResultItemProps
           layoutId={active ? `nowplaying-art-${track.id}` : undefined}
           className="relative grid size-12 shrink-0"
         >
-          {track.thumbnail ? (
+          {pickArtwork(track) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={track.thumbnail}
+              src={pickArtwork(track) ?? undefined}
               alt=""
               width={48}
               height={48}

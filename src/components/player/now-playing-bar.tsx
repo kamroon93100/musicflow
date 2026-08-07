@@ -15,6 +15,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { cn, formatDuration } from "@/lib/utils";
 import { streamErrorMessage } from "@/lib/streaming/error-messages";
+import { pickArtwork } from "@/lib/streaming/artwork";
 import { useUIStore } from "@/stores/ui-store";
 import {
   useCurrentTrack,
@@ -73,6 +74,10 @@ function TrackInfoBase() {
 
   const hasTrack = currentTrack !== null;
   const hasError = streamError !== null;
+  // Progressive art: CAA coverUrl once on-play enrichment lands, else the
+  // YouTube thumbnail. Both surfaces share this so the layoutId morph stays in
+  // sync when one upgrades to album art.
+  const artwork = hasTrack ? pickArtwork(currentTrack) : null;
 
   return (
     <button
@@ -83,14 +88,14 @@ function TrackInfoBase() {
       title={hasTrack ? "Open full screen player" : "Pick a song to start"}
       className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-[8px] p-2 -m-2 text-left outline-none transition-colors duration-150 disabled:cursor-default focus-visible:ring-3 focus-visible:ring-ring/50 hover:bg-elevated/40"
     >
-      {hasTrack && currentTrack.thumbnail ? (
+      {hasTrack && artwork ? (
         <motion.span
           layoutId={`nowplaying-art-${currentTrack.id}`}
           className="relative grid size-12 shrink-0"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={currentTrack.thumbnail}
+            src={artwork}
             alt=""
             width={48}
             height={48}

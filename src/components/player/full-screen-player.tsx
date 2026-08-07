@@ -22,6 +22,7 @@
 import { memo, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  CheckCircle2,
   ListMusic,
   Music,
   Pause,
@@ -39,6 +40,7 @@ import { Slider } from "@/components/ui/slider";
 import { LyricsDisplay } from "@/components/player/lyrics-display";
 import { cn, formatDuration } from "@/lib/utils";
 import { streamErrorMessage } from "@/lib/streaming/error-messages";
+import { pickArtwork } from "@/lib/streaming/artwork";
 import {
   useCurrentTrack,
   useDuration,
@@ -173,7 +175,18 @@ function FullScreenPanel({ close }: { close: () => void }) {
               {streamError
                 ? streamErrorMessage(streamError)
                 : currentTrack.artist ?? "Unknown artist"}
+              {!streamError && currentTrack.metadata?.channelVerified && (
+                <CheckCircle2
+                  className="ml-1 inline-block size-3.5 text-muted-foreground"
+                  aria-label="Verified channel"
+                />
+              )}
             </p>
+            {!streamError && currentTrack.metadata?.album && (
+              <p className="mt-1 w-full truncate text-center text-sm text-muted-foreground">
+                {currentTrack.metadata.album}
+              </p>
+            )}
             {isWarmingUp && isLoading && (
               <p className="mt-2 text-sm text-muted-foreground">
                 Warming up stream…
@@ -199,7 +212,11 @@ function ArtworkBase({ track }: { track: Track }) {
   const artClass =
     "size-[min(300px,60vw)] shrink-0 rounded-[8px] shadow-[0_16px_48px_rgba(0,0,0,0.55)] md:size-[400px]";
 
-  if (!track.thumbnail) {
+  // Progressive art: CAA coverUrl when present (arrives on play), else the
+  // YouTube thumbnail. Instant swap on state update — no skeleton/fade needed.
+  const artwork = pickArtwork(track);
+
+  if (!artwork) {
     return (
       <motion.div
         layoutId={`nowplaying-art-${track.id}`}
@@ -222,7 +239,7 @@ function ArtworkBase({ track }: { track: Track }) {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={track.thumbnail}
+        src={artwork}
         alt={`${track.title} artwork`}
         width={400}
         height={400}
