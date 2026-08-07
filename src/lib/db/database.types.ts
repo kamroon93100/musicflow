@@ -3,7 +3,6 @@ import type {
   listeningHistory,
   playlistTracks,
   playlists,
-  searchHistory,
   users,
 } from "./schema";
 
@@ -81,12 +80,6 @@ export type Database = {
         Row: ToSnake<typeof listeningHistory.$inferSelect>;
         Insert: ToSnake<typeof listeningHistory.$inferInsert>;
         Update: Partial<ToSnake<typeof listeningHistory.$inferInsert>>;
-        Relationships: [];
-      };
-      search_history: {
-        Row: ToSnake<typeof searchHistory.$inferSelect>;
-        Insert: ToSnake<typeof searchHistory.$inferInsert>;
-        Update: Partial<ToSnake<typeof searchHistory.$inferInsert>>;
         Relationships: [];
       };
     };
