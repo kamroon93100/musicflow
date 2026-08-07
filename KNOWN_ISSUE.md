@@ -442,3 +442,23 @@ recover — expected to work correctly since all code paths type-check clean
 and server actions succeed.
 
 **Status:** DEFERRED — not a code bug, not blocking Slice 4.6 ship.
+
+## [4.7] URL-sync race condition — fixed via lastWrittenRef pattern (2026-08-07)
+
+**Symptom:** During visual verification of Slice 4.7 search, fast typing
+dropped characters. Input showed "shape of you" but URL showed "shapeof y".
+
+**Root cause:** The initial `applyingExternalUrl` boolean latch pattern in
+SearchClient couldn't distinguish self-echoes (our own router.replace) from
+external navigation (browser back/forward). Every URL change from our own
+write triggered setQuery(urlQuery), clobbering user's in-flight typing.
+
+**Fix:** Replaced boolean latch with `lastWrittenRef` (value-based echo
+detection). External-sync effect now compares urlQuery to lastWrittenRef;
+if equal, it's our own echo → ignore. If different, real external nav →
+sync local state.
+
+**Verified:** Fast typing "the weeknd blinding lights" lands every char.
+Browser back/forward still works correctly.
+
+**Status:** RESOLVED.

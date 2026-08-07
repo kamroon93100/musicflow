@@ -35,7 +35,7 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [ ] 4.5 Virtualized track list component — waived on playlist detail
       (reorder-vs-virtualization conflict, KNOWN_ISSUE [4.5]); revisit at 500+ tracks
 - [x] 4.6 Home page with sections
-- [ ] 4.7 Search page with results
+- [x] 4.7 Search page with results
 - [x] 4.8 Playlist detail page
 
 ### Phase 5: Advanced Features 🔒
@@ -298,5 +298,24 @@ build passes, visual verification all pass. SEE KNOWN_ISSUE [4.6]: E2E play
 -tracking (30s trackPlayEvent → Recently/Popular sections fill) verification
 DEFERRED due to upstream streaming outage (yt-dlp 502, both Piped 500/502);
 all server actions return 200 and empty-state rendering verified.
-Next: the user's next Phase 4 slice (sidebar/library sections, Search page,
-or the track-list page) per their roadmap.
+Slice 4.7 complete: Search page with URL sync + Cmd/Ctrl+K shortcut +
+playQueue integration. URL query string (?q=X) is the source of truth
+(decision D2); the client mirrors it into a local input, debounces 300ms,
+writes back via router.replace (no history spam), and re-syncs on external
+nav. generateMetadata (server shell) renders the dynamic <title>; the
+useSearchParams client is wrapped in a <Suspense> boundary (Next 16 build
+gate). Data: use-search hook with AbortController {signal} cancellation +
+keepPreviousData for flash-free transitions + 10min staleTime riding the
+server Redis 5-min cache. Selecting a row calls playQueue(results, index)
+so next/prev traverse the result set (D5); the active row's thumbnail shares
+a layoutId with the NowPlayingBar thumb so it morphs on play (D6). Header
+search (TopBar) is a launch pad: Enter → /search?q=X; Cmd/Ctrl+K focuses it
+(single window listener, torn down on unmount, ref-forwarded Input via
+base-ui + React 19 ref-as-prop). E2E caught a real bug — fast typing dropped
+characters because the external-sync latch clobbered in-flight input; fixed
+with the lastWrittenRef echo-detection pattern (see KNOWN_ISSUE [4.7]).
+Verified: tsc clean, build passes, fast typing lands every char, back/forward
+synccorrectly, header nav + Cmd+K work. KNOWN_ISSUE [4.6] (E2E play-tracking
+verification) remains DEFERRED — streaming outage, not a Slice 4.7 bug.
+Next: Slice 4.8 — Spotify integration, pivoting to a Meld-inspired
+architecture. See SESSION_HANDOFF.md for the Meld GitHub context link.

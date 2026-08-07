@@ -1,3 +1,29 @@
+# SESSION UPDATE — 2026-08-07 — Slice 4.7 Shipped
+
+## What Was Built
+- URL-synced Search page (Server Component + Suspense + generateMetadata)
+- SearchClient with race-condition fix (lastWrittenRef pattern)
+- useSearch hook (AbortController + keepPreviousData, TanStack v5)
+- SearchResultItem with layoutId spatial morph into player
+- Header search enabled + Cmd/Ctrl+K global shortcut
+
+## Verified
+- TypeScript clean (tsc --noEmit)
+- Production build passed (12 routes)
+- Fast-typing URL sync stable
+- Cmd+K focuses search input
+- Enter navigates to /search?q=...
+
+## Roadmap Correction (locked in truth-tightening-verdicts.md)
+- Slice 4.8 = Truth Tightening (delete dead weight, fix CLAUDE.md lies)
+- Slice 4.9 = Streaming Cascade Reliability (product lifeblood)
+- Original MusicBrainz-first order was wrong — corrected
+
+## Next Session Starts At
+Slice 4.8 Step 1 — Pre-flight audit + deletion plan
+
+---
+
 ═══════════════════════════════════════════════
 MUSICFLOW — SESSION HANDOFF
 ═══════════════════════════════════════════════
