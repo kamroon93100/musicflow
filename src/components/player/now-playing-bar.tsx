@@ -23,6 +23,7 @@ import {
   useIsLoading,
   useIsPaused,
   useIsPlaying,
+  useIsWarmingUp,
   usePlayerActions,
   usePosition,
   useQueue,
@@ -66,6 +67,7 @@ function NowPlayingBarBase() {
 function TrackInfoBase() {
   const currentTrack = useCurrentTrack();
   const isLoading = useIsLoading();
+  const isWarmingUp = useIsWarmingUp();
   const streamError = useStreamError();
   const openFullScreen = useUIStore((s) => s.openFullScreenPlayer);
 
@@ -112,6 +114,11 @@ function TrackInfoBase() {
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-foreground">
           {hasTrack ? currentTrack.title : "Not playing"}
+          {isWarmingUp && isLoading && (
+            <span className="ml-2 text-xs text-muted-foreground">
+              Warming up stream…
+            </span>
+          )}
         </p>
         <p
           className={cn(

@@ -43,8 +43,10 @@ import {
   useCurrentTrack,
   useDuration,
   useHistory,
+  useIsLoading,
   useIsPaused,
   useIsPlaying,
+  useIsWarmingUp,
   usePlayerActions,
   usePosition,
   useQueue,
@@ -88,6 +90,8 @@ export default function FullScreenPlayer() {
 
 function FullScreenPanel({ close }: { close: () => void }) {
   const currentTrack = useCurrentTrack();
+  const isLoading = useIsLoading();
+  const isWarmingUp = useIsWarmingUp();
   const streamError = useStreamError();
   const isMobile = useIsMobile();
 
@@ -170,6 +174,11 @@ function FullScreenPanel({ close }: { close: () => void }) {
                 ? streamErrorMessage(streamError)
                 : currentTrack.artist ?? "Unknown artist"}
             </p>
+            {isWarmingUp && isLoading && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Warming up stream…
+              </p>
+            )}
             <LyricsDisplay className="mt-8 w-full" />
           </div>
         </div>

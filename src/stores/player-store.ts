@@ -49,6 +49,10 @@ export interface PlayerState {
   isPlaying: boolean;
   isPaused: boolean;
   isLoading: boolean;
+  /** True when a stream fetch has been in flight >5s (Render cold start). UI
+   *  shows "Warming up stream…" so a slow first track isn't read as a hang.
+   *  Orthogonal to isLoading: fires only past the threshold, off before it. */
+  isWarmingUp: boolean;
   /** Non-null when the last startTrack failed to fetch/load a stream (kept set
    *  so the bar can show the track info + an error instead of going blank).
    *  Holds the structured code + raw message; UI renders the mapped copy. */
@@ -140,6 +144,31 @@ let preloadInFlight = false;
 // trackPlayEvent, so this is belt-and-suspenders).
 const recordedThisSession = new Set<string>();
 
+// Cold-start ("warming up") feedback timer. Module-scoped so any new track
+// start cancels a prior timer; a late callback can never leak onto a song
+// that already settled. Pure client-side — no server latency added.
+let warmupTimer: ReturnType<typeof setTimeout> | null = null;
+/** Render Free cold starts run 30-50s; flag "warming up" once past this. */
+const WARMUP_THRESHOLD_MS = 5_000;
+
+function setIsWarmingUp(v: boolean): void {
+  usePlayerStore.setState({ isWarmingUp: v });
+}
+
+function clearWarmupTimer(): void {
+  if (warmupTimer !== null) {
+    clearTimeout(warmupTimer);
+    warmupTimer = null;
+  }
+  setIsWarmingUp(false);
+}
+
+/** (Re)arm the warmup watch for a new stream fetch. Cancels any prior timer. */
+function armWarmupTimer(): void {
+  clearWarmupTimer();
+  warmupTimer = setTimeout(() => setIsWarmingUp(true), WARMUP_THRESHOLD_MS);
+}
+
 const mediaSession = new MediaSessionController(audioEngine);
 mediaSession.attach();
 
@@ -156,6 +185,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   isPlaying: false,
   isPaused: false,
   isLoading: false,
+  isWarmingUp: false,
   streamError: null,
   position: 0,
   duration: 0,
@@ -205,6 +235,8 @@ function toMetadata(track: Track): TrackMetadata {
 async function startTrack(track: Track): Promise<void> {
   preloadedTrack = null;
   preloadInFlight = false;
+  // Cancel any prior warmup watch so a new track starts from a clean slate.
+  clearWarmupTimer();
   // Optimistic track info (Spotify behavior): publish the track BEFORE the
   // stream fetch so the bar shows it instantly. If the stream then fails, the
   // track stays visible with a streamError instead of the bar going blank.
@@ -217,13 +249,18 @@ async function startTrack(track: Track): Promise<void> {
     position: 0,
     duration: 0,
   });
+  // Arm the cold-start flag: if this fetch outlives the threshold, the UI
+  // explains the delay instead of looking hung. Cleared on settle (both paths).
+  armWarmupTimer();
   try {
     const source = await resolveStream(track);
+    clearWarmupTimer();
     if (!source.url) throw new Error(`Empty stream URL for "${track.title}"`);
     audioEngine.play({ url: source.url, format: source.format });
     mediaSession.setMetadata(toMetadata(track));
     usePlayerStore.setState({ isLoading: false, streamError: null });
   } catch (err) {
+    clearWarmupTimer();
     const code =
       err instanceof StreamResolveError ? err.code : "STREAM_UNKNOWN";
     const message =
@@ -298,6 +335,7 @@ async function previousTrack(): Promise<void> {
 function stopPlayback(): void {
   audioEngine.stop();
   mediaSession.clear();
+  clearWarmupTimer();
   preloadedTrack = null;
   preloadInFlight = false;
   recordedThisSession.clear(); // fresh session → allow re-recording on next play
