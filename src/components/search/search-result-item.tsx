@@ -98,8 +98,15 @@ function SearchResultItemBase({ track, active, onSelect }: SearchResultItemProps
           active ? "bg-elevated/70 ring-1 ring-brand/70" : "hover:bg-elevated",
         )}
       >
-        {/* Thumbnail (48px, 8px radius) + decorative play indicator */}
-        <span className="relative grid size-12 shrink-0">
+        {/* Thumbnail (48px, 8px radius) + decorative play indicator. Active
+            row shares the now-playing-bar layoutId so it morphs into the bar
+            thumb on play — slice 4.7 D6, mirroring HomeTrackCard. Only the
+            ACTIVE row has a layoutId (undefined otherwise → no Framer
+            conflict from duplicate ids in a long list). */}
+        <motion.span
+          layoutId={active ? `nowplaying-art-${track.id}` : undefined}
+          className="relative grid size-12 shrink-0"
+        >
           {track.thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -128,7 +135,7 @@ function SearchResultItemBase({ track, active, onSelect }: SearchResultItemProps
           >
             <Play className="size-4 fill-foreground text-foreground" />
           </span>
-        </span>
+        </motion.span>
 
         {/* Metadata */}
         <span className="min-w-0 flex-1">
