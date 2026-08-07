@@ -88,3 +88,5 @@ tmp/
 
 # Drizzle migrations (regenerated per environment)
 src/lib/db/migrations/
+
+cookies.txt
