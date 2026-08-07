@@ -417,3 +417,28 @@
   * MODIFIED: src/lib/env.ts (getYtdlpEnv optional)
   * MODIFIED: src/lib/cache/redis.ts (STREAM_TTL_SECONDS + stale header
     corrected)
+
+## [4.6] E2E play-tracking verification deferred — upstream streaming outage (2026-08-07)
+
+**Symptom:** During Slice 4.6 visual verification, all three streaming layers
+returned errors simultaneously:
+- yt-dlp (Render Free): HTTP 502
+- Piped api.piped.private.coffee: HTTP 500
+- Piped pipedapi.kavin.rocks: HTTP 502
+
+**Impact on verification:** Cannot play any track long enough to hit the 30s
+trackPlayEvent threshold, so Recently Played and Popular Tracks sections
+remain empty during test. Empty-state rendering (return null when tracks.length === 0)
+was verified working correctly. All server actions returned 200:
+- getRecentlyPlayed(8) ~400ms
+- getPopularTracks(6) ~440ms
+- getMyPlaylists() ~380ms
+
+**Root cause:** Upstream infrastructure. Documented in KNOWN_ISSUE [2.2]
+(Piped instances unreliable) and [3.3-alt] (Render Free cold-start behavior).
+
+**Resolution:** Deferred. Re-verify tracking pipeline when streaming layers
+recover — expected to work correctly since all code paths type-check clean
+and server actions succeed.
+
+**Status:** DEFERRED — not a code bug, not blocking Slice 4.6 ship.

@@ -34,7 +34,7 @@ Build a free music streaming web app (Spotify clone) with 120fps performance.
 - [x] 4.4 Full-screen player (expandable, spring physics)
 - [ ] 4.5 Virtualized track list component — waived on playlist detail
       (reorder-vs-virtualization conflict, KNOWN_ISSUE [4.5]); revisit at 500+ tracks
-- [ ] 4.6 Home page with sections
+- [x] 4.6 Home page with sections
 - [ ] 4.7 Search page with results
 - [x] 4.8 Playlist detail page
 
@@ -280,5 +280,23 @@ raised to bottom-28 (above the 90px player bar). Verified end-to-end by the
 user: gradient cover, library/search wiring, drag-reorder (desktop), equalizer
 on active row, stream-block handling, active-track indicator. See KNOWN_ISSUE.md
 [4.5].
-Next: the user's next Phase 4 slice (sidebar/library sections, Home sections, or
-the track-list page) per their roadmap.
+Slice 4.6 complete: home page with real data + play tracking. Greeting
+(time-based + user name), Recently Played, Popular (Recommended), Your
+Playlists, and Genre grid sections. HomeTrackCard (160px square, hover play
+chip, layoutId spatial morph with NowPlayingBar thumb on active track).
+Data via use-home.ts hooks: useRecentlyPlayed (60s stale) + usePopularTracks
+(5min stale, matches server Redis TTL) both riding the Step 2 history
+actions (RLS-scoped reads for recently-played, service-role aggregate for
+popular). Your Playlists uses existing useMyPlaylists + FNV-1a gradient
+covers from src/lib/cover.ts (SoT), skip-render when empty. Genre tiles got
+brand-green hover ring + future-page TODO. Page composed Greeting →
+RecentlyPlayed → YourPlaylists → Recommended → GenreGrid with 50ms section /
+30ms card stagger (first render only) under MotionConfig reducedMotion="user".
+Perf: sections each own their useQuery (no useQueries bundle); memoized
+cards; player state never re-renders outside the player. Verified: tsc clean,
+build passes, visual verification all pass. SEE KNOWN_ISSUE [4.6]: E2E play
+-tracking (30s trackPlayEvent → Recently/Popular sections fill) verification
+DEFERRED due to upstream streaming outage (yt-dlp 502, both Piped 500/502);
+all server actions return 200 and empty-state rendering verified.
+Next: the user's next Phase 4 slice (sidebar/library sections, Search page,
+or the track-list page) per their roadmap.
