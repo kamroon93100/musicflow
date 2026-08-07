@@ -12,6 +12,15 @@ const querySchema = z.object({
     .min(1, "Title is required")
     .max(200, "Title is too long"),
   artist: z.string().trim().max(200, "Artist is too long").optional(),
+  // Duration in seconds (whole number). Optional; disambiguates the LRCLib
+  // match. Rejected unless a finite positive integer.
+  duration: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined ? undefined : Number(v)))
+    .refine((v) => v === undefined || (Number.isFinite(v) && v > 0), {
+      message: "Invalid duration",
+    }),
 });
 
 export async function GET(
@@ -30,6 +39,7 @@ export async function GET(
   const parsed = querySchema.safeParse({
     title: request.nextUrl.searchParams.get("title"),
     artist: request.nextUrl.searchParams.get("artist") ?? undefined,
+    duration: request.nextUrl.searchParams.get("duration") ?? undefined,
   });
   if (!parsed.success) {
     return Response.json(
@@ -43,6 +53,7 @@ export async function GET(
       parsedId.data,
       parsed.data.title,
       parsed.data.artist ?? null,
+      parsed.data.duration,
     );
     return Response.json(
       { success: true, data },

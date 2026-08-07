@@ -58,6 +58,27 @@ export interface PipedStreamsResponse {
   [key: string]: unknown;
 }
 
+/** Where a track's enriched metadata came from (Slice 4.10). */
+export type MetadataSource = "musicbrainz" | "youtube" | "piped";
+
+/**
+ * Optional enrichment bag attached to a Track at play time (Slice 4.10).
+ * Search results never carry this — it's added by the metadata pipeline when a
+ * track is actually played, mirroring the DB `track_metadata` jsonb snapshot.
+ * Absent / `undefined` on the hot search path so memoized consumers stay lean.
+ */
+export interface TrackMetadata {
+  album?: string;
+  coverUrl?: string;
+  mbid?: string;
+  artistMbid?: string;
+  channelId?: string;
+  channelVerified?: boolean;
+  source: MetadataSource;
+  /** Unix ms when this metadata was recorded. */
+  enrichedAt: number;
+}
+
 /** Normalized track — field subset aligned with our `tracks` schema. */
 export interface Track {
   /** YouTube video ID (text, same format as our schema's track ID). */
@@ -67,6 +88,8 @@ export interface Track {
   /** Duration in seconds. */
   duration: number | null;
   thumbnail: string | null;
+  /** Optional, additive enrichment (Slice 4.10) — always accessed with `?.`. */
+  metadata?: TrackMetadata;
 }
 
 /** Playable stream payload the `/api/stream/[id]` route returns. */

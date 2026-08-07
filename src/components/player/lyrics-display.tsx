@@ -62,6 +62,11 @@ function parseLrc(lrc: string): SyncedLine[] {
 async function fetchLyrics(track: Track): Promise<LyricsData> {
   const params = new URLSearchParams({ title: track.title });
   if (track.artist) params.set("artist", track.artist);
+  // Duration disambiguates the LRCLib match (same-title/different-artist);
+  // only sent when actually known.
+  if (typeof track.duration === "number" && Number.isFinite(track.duration)) {
+    params.set("duration", String(Math.round(track.duration)));
+  }
   const res = await fetch(`/api/lyrics/${encodeURIComponent(track.id)}?${params.toString()}`);
   const json = (await res.json()) as {
     success?: boolean;

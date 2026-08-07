@@ -75,6 +75,7 @@ export async function getLyrics(
   id: string,
   title: string,
   artist: string | null,
+  duration?: number,
 ): Promise<{ data: LyricsData; fromCache: boolean }> {
   const key = cacheKey("lyrics", `${id}|${title}|${artist ?? ""}`);
 
@@ -82,15 +83,21 @@ export async function getLyrics(
   if (cached) return { data: cached, fromCache: true };
 
   // Primary: exact lookup by artist + track name. A transient /api/get failure
-  // degrades to the search fallback rather than a hard fail.
+  // degrades to the search fallback rather than a hard fail. Duration is sent
+  // only when known (disambiguates same-title/different-artist); the /search
+  // fallback below accepts no duration, so it's never passed there.
   let track: LrclibTrack | null = null;
   if (artist) {
     try {
+      const durationParam =
+        typeof duration === "number" && Number.isFinite(duration) && duration > 0
+          ? `&duration=${Math.round(duration)}`
+          : "";
       track = (await fetchLrclib(
-        `/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`,
+        `/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}${durationParam}`,
       )) as LrclibTrack | null;
     } catch {
-      // ignore — search fallback below tries once more
+      // ignore — the search fallback below tries once more
     }
   }
   if (!hasLyrics(track)) {
