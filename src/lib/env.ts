@@ -9,9 +9,9 @@ import { z } from "zod";
  *   — fail fast rather than limp along. Each var is read via a direct
  *   process.env.NEXT_PUBLIC_* reference so Next.js inlines it into client
  *   bundles at build time.
- * - Server secrets (SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL) are validated
+ * - Server secrets (SUPABASE_SERVICE_ROLE_KEY) are validated
  *   LAZILY via getServerEnv(), called only from server-only modules. This
- *   lets `next build`/dev succeed before keys exist (they land in Slice 1.3).
+ *   lets `next build`/dev succeed before keys exist.
  */
 const publicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
@@ -31,7 +31,6 @@ export const env = {
 
 const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  DATABASE_URL: z.string().min(1),
 });
 
 let cachedServerEnv: z.infer<typeof serverEnvSchema> | undefined;
@@ -45,7 +44,6 @@ export function getServerEnv() {
   if (!cachedServerEnv) {
     cachedServerEnv = serverEnvSchema.parse({
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      DATABASE_URL: process.env.DATABASE_URL,
     });
   }
   return cachedServerEnv;

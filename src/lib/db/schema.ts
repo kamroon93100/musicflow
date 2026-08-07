@@ -134,26 +134,10 @@ export const listeningHistory = pgTable(
   ],
 );
 
-export const searchHistory = pgTable(
-  "search_history",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    query: text("query").notNull(),
-    searchedAt: timestamp("searched_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [index("search_history_user_searched_idx").on(table.userId, table.searchedAt)],
-);
-
 export const usersRelations = relations(users, ({ many }) => ({
   playlists: many(playlists),
   likedTracks: many(likedTracks),
   listeningHistory: many(listeningHistory),
-  searchHistory: many(searchHistory),
 }));
 
 export const playlistsRelations = relations(playlists, ({ one, many }) => ({
@@ -177,8 +161,4 @@ export const listeningHistoryRelations = relations(listeningHistory, ({ one }) =
     fields: [listeningHistory.userId],
     references: [users.id],
   }),
-}));
-
-export const searchHistoryRelations = relations(searchHistory, ({ one }) => ({
-  user: one(users, { fields: [searchHistory.userId], references: [users.id] }),
 }));
