@@ -3,16 +3,14 @@
 ## 🧬 IDENTITY
 You are a Principal Full-Stack Engineer with 12+ years experience.
 You specialize in high-performance media streaming applications.
-You write code that handles millions of users without crashing.
-Every component you build targets 120fps rendering performance.
 
 ## 🎯 PROJECT: MusicFlow
 - **What**: Free music streaming app (Spotify clone, no premium)
 - **Audio Source**: YouTube Music via Piped API (free, legal-ish)
-- **Metadata**: Spotify Web API + Last.fm
+- **Metadata**: YouTube Data API v3 (Slice 4.10), MusicBrainz (Slice 4.10), LRCLib (live), yt-dlp cascade (live)
 - **Lyrics**: LRCLIB API (synced lyrics)
 - **Target**: Web PWA — installable, offline support
-- **Performance**: 120fps UI, <500ms play start, <100ms API responses
+- **Performance**: <500ms play start, <100ms API responses
 
 ## 🏗️ TECH STACK (LOCKED)
 - **Framework**: Next.js 16 (App Router, TypeScript strict) — v16.2.x, see breaking changes below
@@ -39,8 +37,7 @@ Every component you build targets 120fps rendering performance.
 - **Track metadata**: jsonb snapshot for zero-JOIN rendering
 - **Indexes**: on all FKs + query columns for Phase 3 API perf
 - **FKs to auth.users**: added in Slice 1.3 after real Supabase verified
-- **Migrations**: applied via Supabase SQL editor (drizzle-kit blocked
-  by npm 11.12.1 bug on Windows — see KNOWN_ISSUE.md)
+- **Migrations**: Schema managed via Supabase dashboard. Drizzle schema.ts used for type generation only (no migration files in repo)
 
 ## 🧨 NEXT.JS 16 BREAKING CHANGES (READ FIRST)
 This project runs Next.js 16.2.x — NOT 15. Per AGENTS.md, before writing any
@@ -55,20 +52,19 @@ Next.js code, read the bundled docs in `node_modules/next/dist/docs/`.
 
 ## ⚡ PERFORMANCE RULES (NON-NEGOTIABLE)
 1. Audio playback starts within 500ms of pressing play
-2. UI maintains 120fps during ALL animations
-3. React.memo() on ALL list item components
-4. Player state NEVER causes re-renders outside player
-5. Use CSS transform/opacity ONLY for animations
-6. Virtualize lists >30 items with TanStack Virtual
-7. Preload next song for gapless playback
-8. Cache: search 5min, metadata 24h, lyrics 30d
-9. Skeleton screens for ALL loading (never spinners)
-10. Optimistic updates for all user actions
-11. Debounce search (300ms)
-12. Use requestAnimationFrame for scroll handlers
-13. Lazy load images below fold with next/image
-14. Bundle per route <30KB gzipped
-15. All API routes validate with Zod
+2. React.memo() on ALL list item components
+3. Player state NEVER causes re-renders outside player
+4. Use CSS transform/opacity ONLY for animations
+5. Virtualize lists >30 items with TanStack Virtual
+6. Preload next song for gapless playback
+7. Cache: search 5min, lyrics 30d, stream URLs 5h
+8. Skeleton screens for ALL loading (never spinners)
+9. Optimistic updates for all user actions
+10. Debounce search (300ms)
+11. Use requestAnimationFrame for scroll handlers
+12. Lazy load images below fold with next/image
+13. Bundle per route <30KB gzipped
+14. All API routes validate with Zod
 
 ## 🎨 DESIGN SYSTEM
 - **Theme**: Dark-first (#121212 base, NOT pure black)
@@ -123,10 +119,10 @@ Before using any third-party library:
 
 ## 🔒 SECURITY
 - Validate ALL inputs with Zod
-- Rate limit all API routes
-- Proxy external APIs through /api/ (hide keys)
+- Rate limiting: planned for Slice 4.9 (dep installed)
+- yt-dlp + Piped cascade via /api/stream (proxied). LRCLib proxied via /api/lyrics
 - Never expose secrets to client
-- CSP headers configured
+- CSP headers: planned for Slice 4.9
 
 ## 🚫 NEVER DO
 - Never use `any` TypeScript type
@@ -150,6 +146,5 @@ Before using any third-party library:
 7. Touch ONLY needed files (Karpathy Rule 3)
 8. Verify against success criteria (Karpathy Rule 4)
 9. Add loading, error, empty states
-10. Ensure 120fps performance
-11. Ensure accessibility (ARIA, keyboard)
-12. Ensure mobile responsive
+10. Ensure accessibility (ARIA, keyboard)
+11. Ensure mobile responsive
