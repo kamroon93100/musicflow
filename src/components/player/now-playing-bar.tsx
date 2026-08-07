@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { cn, formatDuration } from "@/lib/utils";
+import { streamErrorMessage } from "@/lib/streaming/error-messages";
 import { useUIStore } from "@/stores/ui-store";
 import {
   useCurrentTrack,
@@ -120,7 +121,7 @@ function TrackInfoBase() {
         >
           {hasTrack
             ? hasError
-              ? "Stream unavailable"
+              ? streamErrorMessage(streamError)
               : currentTrack.artist ?? "Unknown artist"
             : "Pick a song to start"}
         </p>

@@ -38,6 +38,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { LyricsDisplay } from "@/components/player/lyrics-display";
 import { cn, formatDuration } from "@/lib/utils";
+import { streamErrorMessage } from "@/lib/streaming/error-messages";
 import {
   useCurrentTrack,
   useDuration,
@@ -87,6 +88,7 @@ export default function FullScreenPlayer() {
 
 function FullScreenPanel({ close }: { close: () => void }) {
   const currentTrack = useCurrentTrack();
+  const streamError = useStreamError();
   const isMobile = useIsMobile();
 
   if (!currentTrack) return null;
@@ -158,8 +160,15 @@ function FullScreenPanel({ close }: { close: () => void }) {
             <h1 className="mt-6 w-full truncate text-center text-2xl font-bold text-foreground">
               {currentTrack.title}
             </h1>
-            <p className="mt-1 w-full truncate text-center text-sm text-muted-foreground">
-              {currentTrack.artist ?? "Unknown artist"}
+            <p
+              className={cn(
+                "mt-1 w-full truncate text-center text-sm",
+                streamError ? "text-destructive" : "text-muted-foreground",
+              )}
+            >
+              {streamError
+                ? streamErrorMessage(streamError)
+                : currentTrack.artist ?? "Unknown artist"}
             </p>
             <LyricsDisplay className="mt-8 w-full" />
           </div>

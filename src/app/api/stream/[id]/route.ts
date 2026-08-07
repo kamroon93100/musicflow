@@ -16,13 +16,34 @@
  *
  * The orchestrator throws StreamError carrying per-layer failure details
  * ({ ytdlp?: string, piped: string[] }); the route logs those for debugging
- * and returns only the generic `error` message to the client.
+ * and returns the generic `error` message + a structured `code` to the client
+ * (see src/lib/streaming/types.ts StreamErrorPayload).
  */
 import { z } from "zod";
 import { getStreamUrl, StreamError } from "@/lib/api/piped";
+import type {
+  StreamErrorCode,
+  StreamErrorPayload,
+} from "@/lib/streaming/types";
 
 // YouTube video IDs are 11 chars of [A-Za-z0-9_-].
 const idSchema = z.string().regex(/^[A-Za-z0-9_-]{11}$/, "Invalid video ID");
+
+/**
+ * Map an exhaust-all-streams failure to a code from the evidence we DO have:
+ * per-layer failure strings (e.g. "… → HTTP 403", "… → The operation was
+ * aborted due to timeout"). 403/forbidden wins (geo/rights block), then a
+ * timeout, else the cascade simply ran dry (every source answered non-403).
+ */
+function classifyStreamFailure(details: {
+  ytdlp?: string;
+  piped: string[];
+}): StreamErrorCode {
+  const evidence = [...details.piped, details.ytdlp ?? ""].join(" | ");
+  if (/403|forbidden/i.test(evidence)) return "STREAM_GEOBLOCKED";
+  if (/abort|timed?\s?out|timeout/i.test(evidence)) return "STREAM_TIMEOUT";
+  return "STREAM_NO_PROVIDERS";
+}
 
 export async function GET(
   _request: Request,
@@ -32,7 +53,14 @@ export async function GET(
   const parsed = idSchema.safeParse(id);
 
   if (!parsed.success) {
-    return Response.json({ success: false, error: "Invalid video ID" }, { status: 400 });
+    return Response.json(
+      {
+        success: false,
+        error: "Invalid video ID",
+        code: "STREAM_INVALID_ID",
+      } satisfies StreamErrorPayload,
+      { status: 400 },
+    );
   }
 
   try {
@@ -57,7 +85,11 @@ export async function GET(
       const headers = new Headers();
       headers.set("X-Stream-Source", "none");
       return Response.json(
-        { success: false, error: err.message },
+        {
+          success: false,
+          error: err.message,
+          code: classifyStreamFailure(err.details),
+        } satisfies StreamErrorPayload,
         { status: 502, headers },
       );
     }
@@ -67,7 +99,11 @@ export async function GET(
       error: err instanceof Error ? err.message : String(err),
     });
     return Response.json(
-      { success: false, error: "Failed to fetch stream" },
+      {
+        success: false,
+        error: "Failed to fetch stream",
+        code: "STREAM_UNKNOWN",
+      } satisfies StreamErrorPayload,
       { status: 500 },
     );
   }

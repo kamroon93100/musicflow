@@ -22,8 +22,26 @@ import type { StreamInfo, Track } from "@/types/piped";
 import { audioEngine } from "@/lib/audio/engine";
 import { MediaSessionController } from "@/lib/audio/media-session";
 import { trackPlayEvent } from "@/lib/history/actions";
+import {
+  isStreamErrorCode,
+  type StreamErrorCode,
+  type StreamErrorInfo,
+} from "@/lib/streaming/types";
 
 export type RepeatMode = "off" | "one" | "all";
+
+/**
+ * Structured resolve failure — threads the server's `code` to the store so the
+ * UI can show a message tailored to the failure class (not one generic string).
+ */
+export class StreamResolveError extends Error {
+  readonly code: StreamErrorCode;
+  constructor(code: StreamErrorCode, message: string) {
+    super(message);
+    this.name = "StreamResolveError";
+    this.code = code;
+  }
+}
 
 export interface PlayerState {
   // Playback
@@ -31,9 +49,10 @@ export interface PlayerState {
   isPlaying: boolean;
   isPaused: boolean;
   isLoading: boolean;
-  /** Non-null when the last startTrack failed to fetch a stream (kept set so
-   *  the bar can show the track info + an error instead of going blank). */
-  streamError: string | null;
+  /** Non-null when the last startTrack failed to fetch/load a stream (kept set
+   *  so the bar can show the track info + an error instead of going blank).
+   *  Holds the structured code + raw message; UI renders the mapped copy. */
+  streamError: StreamErrorInfo | null;
   position: number;
   duration: number;
   volume: number;
@@ -84,13 +103,16 @@ async function defaultResolveStream(track: Track): Promise<StreamSource> {
         success?: boolean;
         data?: StreamInfo;
         error?: string;
+        code?: unknown;
       };
       if (res.ok && json.success && json.data) {
         return { url: json.data.url, format: json.data.format ?? undefined };
       }
-      lastError = new Error(
-        json.error ?? `Failed to load stream for "${track.title}"`,
-      );
+      const message = json.error ?? `Failed to load stream for "${track.title}"`;
+      // Server sends a structured `code`; unknown/missing → STREAM_UNKNOWN
+      // (defensive against legacy or malformed bodies).
+      const code = isStreamErrorCode(json.code) ? json.code : "STREAM_UNKNOWN";
+      lastError = new StreamResolveError(code, message);
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
     }
@@ -202,10 +224,15 @@ async function startTrack(track: Track): Promise<void> {
     mediaSession.setMetadata(toMetadata(track));
     usePlayerStore.setState({ isLoading: false, streamError: null });
   } catch (err) {
+    const code =
+      err instanceof StreamResolveError ? err.code : "STREAM_UNKNOWN";
     const message =
       err instanceof Error ? err.message : "Stream unavailable";
     console.warn("[player] failed to start track:", err);
-    usePlayerStore.setState({ isLoading: false, streamError: message });
+    usePlayerStore.setState({
+      isLoading: false,
+      streamError: { code, message },
+    });
   }
 }
 
@@ -389,8 +416,19 @@ audioEngine.on("pause", () => {
   usePlayerStore.setState({ isPlaying: false, isPaused: true });
 });
 audioEngine.on("end", handleEngineEnd);
-audioEngine.on("error", () => {
-  usePlayerStore.setState({ isPlaying: false, isPaused: false, isLoading: false });
+audioEngine.on("error", (e) => {
+  // The stream URL reached the client but the audio failed to load/play even
+  // after the engine's single rebuild-retry. Surface it as a client-side
+  // TIMEOUT so the bar shows a retry-able message rather than going blank.
+  usePlayerStore.setState({
+    isPlaying: false,
+    isPaused: false,
+    isLoading: false,
+    streamError: {
+      code: "STREAM_TIMEOUT",
+      message: e.error.message || "Audio failed to load",
+    },
+  });
 });
 audioEngine.on("progress", (e) => {
   usePlayerStore.setState({ position: e.position, duration: e.duration });
