@@ -43,6 +43,67 @@ const REQUEST_TIMEOUT_MS = 10_000;
 const WATCH_URL_RE = /\/watch\?v=([A-Za-z0-9_-]{11})/;
 const YT_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
+/* ---- Host health cooldown (Slice 4.9 Phase 4) ------------------------------
+ * In-memory, runtime-only self-healing: a host that just failed is skipped for
+ * a short cooldown so a dead instance stops costing a full 10s timeout on every
+ * request. Pure reactive marking (no proactive probing), resets on restart —
+ * which is fine for a per-process cache. Fail-open: if every host is cooling
+ * down, we try the original list anyway rather than block playback entirely.
+ */
+const HOST_COOLDOWN_MS = 60_000; // 60s
+
+interface HostHealth {
+  /** Unix ms after which the host may be retried; 0/absent = healthy. */
+  cooldownUntil: number;
+  /** Last failure reason, for logging/diagnostics. */
+  lastFailure?: string;
+}
+
+const hostHealth = new Map<string, HostHealth>();
+
+function markHostUnhealthy(host: string, reason: string): void {
+  hostHealth.set(host, {
+    cooldownUntil: Date.now() + HOST_COOLDOWN_MS,
+    lastFailure: reason,
+  });
+  console.log("[piped] host cooldown", {
+    host,
+    reason,
+    cooldownMs: HOST_COOLDOWN_MS,
+  });
+}
+
+function isHostHealthy(host: string): boolean {
+  const record = hostHealth.get(host);
+  if (!record) return true;
+  return Date.now() >= record.cooldownUntil;
+}
+
+/** Collapse a thrown fetch error into a reason string ('timeout' vs network). */
+function markHostFailure(host: string, err: unknown): void {
+  const detail = err instanceof Error ? err.message : String(err);
+  const isTimeout = /abort|timed?\s?out|timeout/i.test(detail);
+  markHostUnhealthy(host, isTimeout ? "timeout" : `network: ${detail}`);
+}
+
+/**
+ * Ordered candidate hosts for a request. Prefers hosts NOT in cooldown,
+ * preserving list order; falls back to the full original list when every host
+ * is cooling down (fail-open). Returns the original index so callers can keep
+ * their primary/fallback tier tags stable across the health filter.
+ */
+function healthyHostOrder(): Array<{ host: string; index: number }> {
+  const all = PIPED_INSTANCES.map((host, index) => ({ host, index }));
+  const healthy = all.filter(({ host }) => isHostHealthy(host));
+  const mode = healthy.length > 0 ? "healthy" : "fail-open";
+  const tried = healthy.length > 0 ? healthy : all;
+  console.log("[piped] host selection", {
+    mode,
+    tried: tried.map((t) => t.host),
+  });
+  return tried;
+}
+
 /** Piped format token → howler format hint (engine StreamSource.format). */
 const FORMAT_TO_HOWLER: Record<string, string> = {
   M4A: "mp4",
@@ -126,21 +187,23 @@ function selectBestAudioStream(
  */
 async function fetchPiped(path: string): Promise<unknown> {
   const failures: string[] = [];
-  for (const instance of PIPED_INSTANCES) {
+  for (const { host } of healthyHostOrder()) {
     try {
-      const response = await fetch(`${instance}${path}`, {
+      const response = await fetch(`${host}${path}`, {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         headers: { Accept: "application/json" },
         cache: "no-store",
       });
       if (!response.ok) {
-        failures.push(`${instance} → HTTP ${response.status}`);
+        markHostUnhealthy(host, `HTTP ${response.status}`);
+        failures.push(`${host} → HTTP ${response.status}`);
         continue;
       }
       return (await response.json()) as unknown;
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      failures.push(`${instance} → ${detail}`);
+      markHostFailure(host, err);
+      failures.push(`${host} → ${detail}`);
     }
   }
   throw new Error(`All Piped instances failed: ${failures.join(" | ")}`);
@@ -212,8 +275,8 @@ async function getStreamFromPiped(videoId: string): Promise<{
   source: "piped-primary" | "piped-fallback";
 }> {
   const failures: string[] = [];
-  for (let index = 0; index < PIPED_INSTANCES.length; index++) {
-    const instance = PIPED_INSTANCES[index];
+  for (const { host, index } of healthyHostOrder()) {
+    const instance = host;
     const source = index === 0 ? "piped-primary" : "piped-fallback";
     const started = Date.now();
     console.log("[stream] trying piped", { instance, videoId });
@@ -227,6 +290,7 @@ async function getStreamFromPiped(videoId: string): Promise<{
         },
       );
       if (!response.ok) {
+        markHostUnhealthy(instance, `HTTP ${response.status}`);
         failures.push(`${instance} → HTTP ${response.status}`);
         continue;
       }
@@ -253,6 +317,7 @@ async function getStreamFromPiped(videoId: string): Promise<{
       return { stream, source };
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
+      markHostFailure(instance, err);
       failures.push(`${instance} → ${detail}`);
     }
   }
