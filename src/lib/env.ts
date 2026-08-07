@@ -31,6 +31,7 @@ export const env = {
 
 const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 chars"),
 });
 
 let cachedServerEnv: z.infer<typeof serverEnvSchema> | undefined;
@@ -44,6 +45,7 @@ export function getServerEnv() {
   if (!cachedServerEnv) {
     cachedServerEnv = serverEnvSchema.parse({
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      CRON_SECRET: process.env.CRON_SECRET,
     });
   }
   return cachedServerEnv;

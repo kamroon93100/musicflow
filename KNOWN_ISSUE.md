@@ -462,3 +462,18 @@ sync local state.
 Browser back/forward still works correctly.
 
 **Status:** RESOLVED.
+
+## Slice 4.9 Phase 3 — Deployment Requirements
+
+For the yt-dlp warm cron to work in production:
+
+1. Set CRON_SECRET in Vercel Environment Variables
+   (Production + Preview + Development) — must match .env.local value.
+
+2. Vercel cron requires Hobby plan or higher (cron is available on free Hobby).
+
+3. Local dev: cron does not run automatically. To test manually:
+   curl -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/warm-ytdlp
+
+4. If yt-dlp Render service is redeployed, the first cron ping after
+   its new cold state may take 30-50s. Subsequent pings return in <500ms.

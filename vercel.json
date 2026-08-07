@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/warm-ytdlp",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
