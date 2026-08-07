@@ -6,8 +6,8 @@ MUSICFLOW — SESSION HANDOFF
 
 ## COMMITS SHIPPED TODAY (chronological):
 1. 6d24b09 — chore: web Claude handoff for cross-session continuity
-2. <COMMIT_A_HASH> — feat(4.6): home page with real data + play tracking
-3. <COMMIT_B_HASH> — chore(4.6): document deferred E2E verification + mark slice shipped
+2. b72f9c2 — feat(4.6): home page with real data + play tracking
+3. 57aa99d — chore(4.6): document deferred E2E verification + mark slice shipped
 
 All pushed to origin/main. Working tree CLEAN.
 
