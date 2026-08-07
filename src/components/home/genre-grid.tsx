@@ -31,10 +31,12 @@ export function GenreGrid() {
       </h2>
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {GENRES.map((genre, i) => (
+          // TODO(slice-5.x): wire genre tile clicks to /genre/[slug] when genre
+          // pages are built. Tiles are static divs for now — no nav yet.
           <div
             key={genre}
             className={cn(
-              "flex h-24 items-end rounded-[8px] bg-elevated/80 p-3 text-sm font-semibold transition-colors duration-150 hover:bg-elevated",
+              "flex h-24 items-end rounded-[8px] bg-elevated/80 p-3 text-sm font-semibold transition-[box-shadow,background-color] duration-150 ease-out hover:bg-elevated hover:ring-2 hover:ring-brand",
               (i === 0 || i === 6) && "col-span-2",
             )}
           >
