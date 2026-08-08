@@ -19,15 +19,14 @@ import { motion, MotionConfig } from "framer-motion";
 import { GreetingSection } from "@/components/home/greeting-section";
 import { RecentlyPlayedSection } from "@/components/home/recently-played-section";
 import { YourPlaylistsSection } from "@/components/home/your-playlists-section";
-import { RecommendedSection } from "@/components/home/recommended-section";
 import { GenreGrid } from "@/components/home/genre-grid";
 
-/** The four staggered sections, in render order, with fixed keys (CLAUDE.md:
- *  never index keys) and their 50ms-spaced delays. */
+/** The three staggered sections, in render order, with fixed keys (CLAUDE.md:
+ *  never index keys) and their 50ms-spaced delays. (Recommended-for-you is
+ *  hidden until Slice 4.11 — the query/component stays on disk, unrendered.) */
 const SECTIONS = [
   { key: "recent", Component: RecentlyPlayedSection, delay: 0.0 },
   { key: "library", Component: YourPlaylistsSection, delay: 0.05 },
-  { key: "recommended", Component: RecommendedSection, delay: 0.1 },
   { key: "genres", Component: GenreGrid, delay: 0.15 },
 ] as const;
 

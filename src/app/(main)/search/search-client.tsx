@@ -86,7 +86,7 @@ export default function SearchClient() {
   const activeId = useCurrentTrack()?.id ?? null;
   const { playQueue } = usePlayerActions();
 
-  const { data, isPending, isError, error, refetch, isFetching } = useSearch(debounced);
+  const { data, isPending, isError, refetch, isFetching } = useSearch(debounced);
 
   const handleSelect = useCallback(
     (track: Track) => {
@@ -140,10 +140,7 @@ export default function SearchClient() {
             Search for a song to start playing. Results appear as you type.
           </p>
         ) : isError ? (
-          <ErrorState
-            message={error?.message ?? "Something went wrong"}
-            onRetry={() => void refetch()}
-          />
+          <ErrorState onRetry={() => void refetch()} />
         ) : isPending && isFetching ? (
           <LoadingList />
         ) : !data || data.length === 0 ? (
@@ -186,11 +183,11 @@ function EmptyState({ query }: { query: string }) {
   );
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center gap-4 py-16 text-center">
       <p className="max-w-sm text-sm text-muted-foreground">
-        Couldn&apos;t search right now. {message}
+        Couldn&apos;t load results.
       </p>
       <button
         type="button"
