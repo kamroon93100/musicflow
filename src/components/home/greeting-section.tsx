@@ -27,6 +27,10 @@ export function GreetingSection() {
       <h1 id="greeting-heading" className="text-3xl font-bold tracking-tight">
         {getGreeting()}, {name ?? "there"}
       </h1>
+      <p className="mt-2 max-w-prose text-sm text-muted-foreground">
+        Discover music and open it in the player you already use — YouTube,
+        YouTube Music, or Spotify.
+      </p>
     </section>
   );
 }

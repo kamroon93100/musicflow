@@ -20,17 +20,17 @@ Slice 4.10 — Metadata Enrichment (4 phases)
 
 Before next Vercel deploy, set in Vercel Environment Variables:
 - YOUTUBE_API_KEY (min 20 chars, YouTube Data API v3)
-- CRON_SECRET (min 16 chars, matches .env.local)
-- All existing keys (Supabase, Upstash, YTDLP_URL, NEXT_PUBLIC_*)
+- All existing keys (Supabase, Upstash, NEXT_PUBLIC_*)
 
-Cron requires Vercel Hobby plan or higher (free tier includes cron).
+CRON_SECRET and YTDLP_URL are no longer needed (discovery-first pivot removed
+the streaming cascade + warm cron — see Slice 4.11).
 
 ## Manual Verification Needed
-- [ ] Play track — album name appears in full-screen player after ~2s
+- [ ] Click a track — full-screen card opens with artwork + title/artist/album
+- [ ] Card/bar buttons open YouTube, YouTube Music, and Spotify search in new tabs
 - [ ] Cover art upgrades from YouTube thumbnail to CAA where available
 - [ ] Verified badge shows on VEVO/Official tracks
 - [ ] Cmd+K global shortcut works
-- [ ] Warming-up state shows if Render is cold-starting
 
 ## Next Session
 Roadmap position: Slice 4.11 — Personal Recommendations

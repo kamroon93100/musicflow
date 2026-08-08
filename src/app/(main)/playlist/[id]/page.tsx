@@ -14,9 +14,9 @@
  *   delete Dialog        confirm → deletePlaylist → router.push("/library")
  *
  * Subscriptions (perf gate — 120fps rule #4): the page subscribes ONLY to the
- * playlist query, the active track id, isPlaying (equalizer), and shuffle —
- * NOT position/duration/volume. All handlers are useCallback'd with correct
- * deps so the memo'd list/rows hold across renders.
+ * playlist query, the active track id, and shuffle — no audio state (Slice
+ * 4.11 discovery-first). All handlers are useCallback'd with correct deps so
+ * the memo'd list/rows hold across renders.
  *
  * Note: the step-7 sketch's handlers took (entry) params, but the approved
  * PlaylistTrackList interface consumes onPlayTrack(index) / onRemoveTrack(trackId)
@@ -32,7 +32,6 @@ import {
 } from "@/hooks/use-playlists";
 import {
   useCurrentTrack,
-  useIsPlaying,
   usePlayerActions,
   useShuffleMode,
 } from "@/hooks/use-player";
@@ -70,7 +69,6 @@ export default function PlaylistDetailPage() {
 
   // Active-track state for the list (one subscription each).
   const currentTrack = useCurrentTrack();
-  const isPlaying = useIsPlaying();
   const shuffle = useShuffleMode();
   const { playQueue, toggleShuffle } = usePlayerActions();
 
@@ -151,7 +149,6 @@ export default function PlaylistDetailPage() {
         <PlaylistTrackList
           playlist={data}
           activeTrackId={currentTrack?.id ?? null}
-          isPlaying={isPlaying}
           onPlayTrack={handlePlayTrack}
           onRemoveTrack={handleRemoveTrack}
         />

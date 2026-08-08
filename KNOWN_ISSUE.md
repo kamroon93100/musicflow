@@ -463,9 +463,13 @@ Browser back/forward still works correctly.
 
 **Status:** RESOLVED.
 
-## Slice 4.9 Phase 3 — Deployment Requirements
+## Slice 4.9 Phase 3 — Deployment Requirements (SUPERSEDED by Slice 4.11 pivot)
 
-For the yt-dlp warm cron to work in production:
+The yt-dlp warm cron and its CRON_SECRET auth gate were REMOVED in the
+discovery-first pivot (Slice 4.11): MusicFlow no longer streams server-side, so
+there is no yt-dlp service to warm and no /api/cron/warm-ytdlp route. The
+historical requirements below are retained for reference only — do not re-add
+CRON_SECRET or YTDLP_URL to Vercel env.
 
 1. Set CRON_SECRET in Vercel Environment Variables
    (Production + Preview + Development) — must match .env.local value.

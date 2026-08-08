@@ -90,3 +90,7 @@ tmp/
 src/lib/db/migrations/
 
 cookies.txt
+
+# Streaming attempt leftovers
+cookies*.txt
+devmusicflow-ytdlp/

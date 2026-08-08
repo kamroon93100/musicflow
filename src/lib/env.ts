@@ -31,7 +31,6 @@ export const env = {
 
 const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 chars"),
   YOUTUBE_API_KEY: z.string().min(20, "YOUTUBE_API_KEY looks invalid"),
 });
 
@@ -46,7 +45,6 @@ export function getServerEnv() {
   if (!cachedServerEnv) {
     cachedServerEnv = serverEnvSchema.parse({
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      CRON_SECRET: process.env.CRON_SECRET,
       YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
     });
   }
@@ -76,28 +74,4 @@ export function getRedisEnv(): { url: string; token: string } | null {
     cachedRedisEnv = parsed.success ? parsed.data : null;
   }
   return cachedRedisEnv;
-}
-
-/* ---- Optional yt-dlp env (Slice 3.3-alt) -------------------------------------
- * YTDLP_URL is OPTIONAL. When unset, the streaming orchestrator degrades to
- * Piped-only (see src/lib/api/piped.ts getStreamUrl). Kept separate from
- * getServerEnv() — Supabase auth must never depend on yt-dlp being configured.
- */
-const ytdlpEnvSchema = z.object({
-  url: z.url(),
-});
-
-let cachedYtdlpEnv: string | null | undefined;
-
-// Callers that need the validated URL string should prefer this over
-// process.env.YTDLP_URL directly. Boolean presence checks (see piped.ts
-// orchestrator) can use either.
-export function getYtdlpEnv(): string | null {
-  if (cachedYtdlpEnv === undefined) {
-    const parsed = ytdlpEnvSchema.safeParse({
-      url: process.env.YTDLP_URL,
-    });
-    cachedYtdlpEnv = parsed.success ? parsed.data.url : null;
-  }
-  return cachedYtdlpEnv;
 }

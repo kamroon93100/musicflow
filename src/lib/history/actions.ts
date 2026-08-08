@@ -26,7 +26,9 @@ import type { Track } from "@/types/piped";
 
 const POPULAR_CACHE_TTL_SECONDS = 300; // 5 min — matches CLAUDE.md search TTL
 const PLAY_TRACKING_THROTTLE_MS = 5 * 60 * 1000; // 1 event / track / 5 min / user
-const MIN_PLAY_DURATION_SECONDS = 30; // below this a "play" isn't a real listen
+
+/** Which external service the user chose to open the track in (Slice 4.11). */
+export type PlayDestination = "youtube" | "youtube_music" | "spotify";
 
 /** Shape-validates a normalized Track (mirrors track-actions.ts). */
 const trackSchema = z.object({
@@ -144,21 +146,25 @@ export async function getPopularTracks(
 }
 
 /**
- * Record a playback event (fire-and-forget from the player). Silently no-ops
- * unless the listen is real: >= 30s played, authenticated, and not already
- * recorded for this track in the last 5 minutes (throttle). Callers ignore the
- * result — recording history must never interrupt playback.
+ * Record a "played" event — redefined by the discovery pivot as "user clicked an
+ * external playback button" (Slice 4.11). Fire-and-forget from the player card /
+ * bar: we insert a listening_history row so Recently Played / Popular stay
+ * populated, throttled to one event per track per 5 min (the DB convention
+ * predates this slice). The `destination` is logged but NOT persisted — the
+ * listening_history table has no column for it yet; adding a nullable text
+ * column is a Supabase dashboard migration (deferred, schema managed outside the
+ * repo). Callers ignore the result — recording history must never interrupt
+ * opening the external player.
  */
 export async function trackPlayEvent(
   track: Track,
-  durationPlayed: number,
+  destination: PlayDestination,
 ): Promise<{ error?: string }> {
-  if (durationPlayed < MIN_PLAY_DURATION_SECONDS) return {};
   const parsedTrack = trackSchema.safeParse(track);
   if (!parsedTrack.success) return { error: "Invalid track" };
 
   const userId = await getUserId();
-  if (!userId) return {}; // unauthenticated — not worth an error to the player
+  if (!userId) return {}; // unauthenticated — not worth an error to the caller
 
   const supabase = await createSupabaseServerClient();
 
@@ -180,10 +186,12 @@ export async function trackPlayEvent(
     .insert({
       user_id: userId,
       track_id: parsedTrack.data.id,
-      play_duration: Math.floor(durationPlayed),
+      play_duration: 0, // a click-to-open is the event; no listen duration to store
       track_metadata: parsedTrack.data,
       // played_at defaults to now() at the DB level.
     });
   if (error) return { error: error.message };
+  // destination column deferred (see header) — surface it in the log for now.
+  console.log("[history] play event", { trackId: parsedTrack.data.id, destination });
   return {};
 }

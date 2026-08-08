@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * Playlist track list (Slice 4.5) — framer-motion Reorder.Group wrapper around
- * the PlaylistTrackRow items. This is the one component with real architectural
- * risk (drag + optimistic + race conditions), so the pattern here is explicit.
+ * Playlist track list (Slice 4.5, discovery-first tweak Slice 4.11) — framer-
+ * motion Reorder.Group wrapper around the PlaylistTrackRow items. This is the
+ * one component with real architectural risk (drag + optimistic + race
+ * conditions), so the pattern here is explicit.
  *
  * DRAG → EXACTLY ONE MUTATION (the hard part):
  *   Reorder.Group.onReorder fires CONTINUOUSLY during a drag (once per swap) —
@@ -32,8 +33,9 @@
  * row renders a <div> → ul > li > div (screen-reader list semantics included).
  *
  * Perf: memo list; stable useCallback handlers (handlePlay/handleRemove) mean
- * row props are referentially stable, so on a play/pause toggle only the active
- * row re-renders (each row gets isPlaying={isActive && isPlaying}).
+ * row props are referentially stable, so on a selection change only the active
+ * row re-renders (each row gets isActive). No audio state — there's no playing/
+ * paused toggling anymore (Slice 4.11).
  */
 import {
   memo,
@@ -71,9 +73,8 @@ function useIsCoarsePointer(): boolean {
 
 interface PlaylistTrackListProps {
   playlist: PlaylistWithTracks;
-  /** current playing track's YouTube id (useCurrentTrack()?.id ?? null). */
+  /** current selected track's YouTube id (useCurrentTrack()?.id ?? null). */
   activeTrackId: string | null;
-  isPlaying: boolean;
   onPlayTrack: (index: number) => void;
   onRemoveTrack: (trackId: string) => void;
 }
@@ -81,7 +82,6 @@ interface PlaylistTrackListProps {
 function PlaylistTrackListBase({
   playlist,
   activeTrackId,
-  isPlaying,
   onPlayTrack,
   onRemoveTrack,
 }: PlaylistTrackListProps) {
@@ -167,7 +167,6 @@ function PlaylistTrackListBase({
               entry={entry}
               index={index}
               isActive={entry.trackId === activeTrackId}
-              isPlaying={entry.trackId === activeTrackId && isPlaying}
               onPlay={handlePlay}
               onRemove={handleRemove}
             />

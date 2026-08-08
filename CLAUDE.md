@@ -5,12 +5,13 @@ You are a Principal Full-Stack Engineer with 12+ years experience.
 You specialize in high-performance media streaming applications.
 
 ## 🎯 PROJECT: MusicFlow
-- **What**: Free music streaming app (Spotify clone, no premium)
-- **Audio Source**: YouTube Music via Piped API (free, legal-ish)
-- **Metadata**: YouTube Data API v3 (Slice 4.10), MusicBrainz (Slice 4.10), LRCLib (live), yt-dlp cascade (live)
+- **What**: Music discovery app (Spotify-clone UI, no premium) — discover tracks,
+  then open them in the player you already use (YouTube / YouTube Music / Spotify)
+- **Search**: YouTube Music via Piped API (free, legal-ish)
+- **Metadata**: YouTube Data API v3 (Slice 4.10), MusicBrainz (Slice 4.10), LRCLib (live)
 - **Lyrics**: LRCLIB API (synced lyrics)
 - **Target**: Web PWA — installable, offline support
-- **Performance**: <500ms play start, <100ms API responses
+- **Performance**: <100ms API responses, <500ms card-open on track select
 
 ## 🏗️ TECH STACK (LOCKED)
 - **Framework**: Next.js 16 (App Router, TypeScript strict) — v16.2.x, see breaking changes below
@@ -120,7 +121,8 @@ Before using any third-party library:
 ## 🔒 SECURITY
 - Validate ALL inputs with Zod
 - Rate limiting: planned for Slice 4.9 (dep installed)
-- yt-dlp + Piped cascade via /api/stream (proxied). LRCLib proxied via /api/lyrics
+- Server-side audio streaming removed (Slice 4.11 pivot) — Piped is search-only.
+  LRCLib proxied via /api/lyrics
 - Never expose secrets to client
 - CSP headers: planned for Slice 4.9
 

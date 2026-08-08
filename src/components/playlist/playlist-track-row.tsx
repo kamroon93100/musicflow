@@ -1,17 +1,17 @@
 "use client";
 
 /**
- * Playlist track row (Slice 4.5) — a single 48px row rendering one
- * PlaylistTrackEntry's snapshot metadata. Playable row (index → play icon on
- * hover, equalizer when active) + trailing duration + remove (X) button.
+ * Playlist track row (Slice 4.5, discovery-first tweak Slice 4.11) — a single
+ * 48px row rendering one PlaylistTrackEntry's snapshot metadata. Row selects the
+ * track (index → play icon on hover, static brand marker when active) + trailing
+ * duration + remove (X) button.
  *
  * Perf (CRITICAL — a list item):
  *   - React.memo whole component.
- *   - NO player-store subscription here. `isPlaying` is passed in as a prop
+ *   - NO player-store subscription here. `isActive` is passed in as a prop
  *     by the parent list, and only the active row receives `true` — so a
- *     play/pause toggle re-renders at most the one active row, not all of them.
- *   - The equalizer animates with transform scaleY (GPU), not height.
- *   - When not animating (paused/static), it's plain spans — no rAF ticking.
+ *     selection change re-renders at most the one active row, not all of them.
+ *   - The active marker is static (no rAF ticking, no audio state — Slice 4.11).
  *
  * Motion (emil):
  *   - Row bg change ~150ms ease-out on hover.
@@ -32,53 +32,10 @@ import { Music, Play, X } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import type { PlaylistTrackEntry } from "@/types/playlist";
 
-/* Stable ids for the equalizer bars — never index keys (CLAUDE.md). */
-const EQ_BARS = [
-  { key: "eq-a", duration: 0.6, h: "h-2" },
-  { key: "eq-b", duration: 0.9, h: "h-4" },
-  { key: "eq-c", duration: 0.75, h: "h-3" },
-] as const;
-
-/**
- * Active-track indicator. 3 bars scaleY pulse (0.35→1) each on its own loop
- * when playing; a static set when paused. transform-scaleY only (GPU).
- */
-function Equalizer({ isPlaying }: { isPlaying: boolean }) {
-  const bar =
-    "w-[3px] origin-bottom rounded-full bg-brand";
-  if (!isPlaying) {
-    return (
-      <span className="flex h-4 items-end gap-[3px]" aria-hidden>
-        {EQ_BARS.map((b) => (
-          <span key={b.key} className={cn(bar, b.h)} />
-        ))}
-      </span>
-    );
-  }
-  return (
-    <span className="flex h-4 items-end gap-[3px]" aria-hidden>
-      {EQ_BARS.map((b) => (
-        <motion.span
-          key={b.key}
-          className={cn(bar, "h-4")}
-          animate={{ scaleY: [0.35, 1, 0.35] }}
-          transition={{
-            duration: b.duration,
-            repeat: Infinity,
-            repeatType: "reverse",
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </span>
-  );
-}
-
 interface PlaylistTrackRowProps {
   entry: PlaylistTrackEntry;
   index: number;
   isActive: boolean;
-  isPlaying: boolean;
   /** Stable handlers (same identity every render) so React.memo holds. Each
    *  receives the entry; the row binds its own entry internally on click. */
   onPlay: (entry: PlaylistTrackEntry) => void;
@@ -89,7 +46,6 @@ function PlaylistTrackRowBase({
   entry,
   index,
   isActive,
-  isPlaying,
   onPlay,
   onRemove,
 }: PlaylistTrackRowProps) {
@@ -115,10 +71,10 @@ function PlaylistTrackRowBase({
           isActive ? "bg-elevated/70 ring-1 ring-brand/70" : "hover:bg-elevated/40",
         )}
       >
-        {/* Col 1 — index | play-on-hover | active equalizer */}
+        {/* Col 1 — index | play-on-hover | active marker (static, no audio state) */}
         <span className="grid w-6 shrink-0 place-items-center" aria-hidden>
           {isActive ? (
-            <Equalizer isPlaying={isPlaying} />
+            <Music className="size-4 text-brand" />
           ) : (
             <>
               <span className="text-sm tabular-nums text-muted-foreground group-hover:hidden">

@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * React bindings over the player store.
+ * React bindings over the player store (discovery-first pivot, Slice 4.11).
  *
- * Use the granular selectors in hot paths: position/duration tick at rAF rate,
- * so anything that subscribes to the whole store re-renders every frame
- * (violates the 120fps rule). usePlayerActions() is safe for any component —
- * actions are stable references, so it never re-renders on state changes.
+ * Audio state is gone (no playback in MusicFlow) — the store is selection +
+ * queue only. Granular selectors are kept for the same reason as before:
+ * components subscribe narrowly so a track change re-renders only the player
+ * surfaces, not the whole page (120fps rule #4). usePlayerActions() is safe
+ * for any component — actions are stable references.
  */
 import { useShallow } from "zustand/react/shallow";
 import { usePlayerStore } from "@/stores/player-store";
@@ -18,19 +19,9 @@ export function usePlayer() {
 
 /* ---- Granular selectors (perf isolation) ---- */
 export const useCurrentTrack = () => usePlayerStore((s) => s.currentTrack);
-export const useIsPlaying = () => usePlayerStore((s) => s.isPlaying);
-export const useIsPaused = () => usePlayerStore((s) => s.isPaused);
-export const useIsLoading = () => usePlayerStore((s) => s.isLoading);
-export const useIsWarmingUp = () => usePlayerStore((s) => s.isWarmingUp);
-export const useStreamError = () => usePlayerStore((s) => s.streamError);
-export const usePosition = () => usePlayerStore((s) => s.position);
-export const useDuration = () => usePlayerStore((s) => s.duration);
-export const useVolume = () => usePlayerStore((s) => s.volume);
 export const useQueue = () => usePlayerStore((s) => s.queue);
-export const useHistory = () => usePlayerStore((s) => s.history);
 export const useCurrentIndex = () => usePlayerStore((s) => s.currentIndex);
 export const useShuffleMode = () => usePlayerStore((s) => s.shuffle);
-export const useRepeatMode = () => usePlayerStore((s) => s.repeat);
 
 /** Stable action set — selected via useShallow, never re-renders on state. */
 export function usePlayerActions() {
@@ -38,18 +29,7 @@ export function usePlayerActions() {
     useShallow((s) => ({
       playTrack: s.playTrack,
       playQueue: s.playQueue,
-      pause: s.pause,
-      resume: s.resume,
-      stop: s.stop,
-      next: s.next,
-      previous: s.previous,
-      seek: s.seek,
-      setVolume: s.setVolume,
       toggleShuffle: s.toggleShuffle,
-      cycleRepeat: s.cycleRepeat,
-      addToQueue: s.addToQueue,
-      removeFromQueue: s.removeFromQueue,
-      clearQueue: s.clearQueue,
     })),
   );
 }
